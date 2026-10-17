@@ -21,9 +21,13 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import Stack from '@mui/material/Stack';
+import Grid from '@mui/material/Grid2';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import AddIcon from '@mui/icons-material/Add';
+import StorefrontIcon from '@mui/icons-material/StorefrontOutlined';
+import AccountTreeIcon from '@mui/icons-material/AccountTreeOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircleOutlined';
 import { useAuthStore } from '@/stores/auth-store';
 import { adminApi } from '@/lib/api';
 import { useSnackbar } from 'notistack';
@@ -50,6 +54,28 @@ interface Tenant {
 
 const emptyTenant = { name: '', slug: '', kraPin: '', phone: '', email: '' };
 const emptyBranch = { name: '', address: '', phone: '' };
+
+function StatCard({ label, value, icon, gradient }: { label: string; value: number; icon: React.ReactNode; gradient: string }) {
+  return (
+    <Paper sx={{
+      p: 3, display: 'flex', alignItems: 'center', gap: 2.5,
+      border: '1px solid #E2E8F0', boxShadow: 'none',
+    }}>
+      <Box sx={{
+        width: 52, height: 52, borderRadius: 3, display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        background: gradient, color: '#fff',
+        boxShadow: `0 4px 12px ${gradient.includes('#1565') ? 'rgba(21,101,192,0.3)' : gradient.includes('#059') ? 'rgba(5,150,105,0.3)' : 'rgba(124,58,237,0.3)'}`,
+      }}>
+        {icon}
+      </Box>
+      <Box>
+        <Typography variant="body2" sx={{ color: '#64748B', fontSize: '0.8rem', fontWeight: 500 }}>{label}</Typography>
+        <Typography variant="h4" sx={{ fontWeight: 800, color: '#0F172A', fontSize: '1.75rem' }}>{value}</Typography>
+      </Box>
+    </Paper>
+  );
+}
 
 function TenantRow({ tenant, onBranchCreated }: { tenant: Tenant; onBranchCreated: () => void }) {
   const [open, setOpen] = useState(false);
@@ -90,46 +116,71 @@ function TenantRow({ tenant, onBranchCreated }: { tenant: Tenant; onBranchCreate
 
   return (
     <>
-      <TableRow hover>
-        <TableCell>
-          <IconButton size="small" onClick={handleExpand}>
+      <TableRow hover sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
+        <TableCell sx={{ py: 2 }}>
+          <IconButton size="small" onClick={handleExpand} sx={{
+            bgcolor: open ? '#EFF6FF' : 'transparent',
+            color: open ? '#1565C0' : '#94A3B8',
+          }}>
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell sx={{ fontWeight: 700 }}>{tenant.name}</TableCell>
-        <TableCell>{tenant.slug}</TableCell>
-        <TableCell>{tenant.email}</TableCell>
-        <TableCell>{tenant.phone}</TableCell>
-        <TableCell>{tenant.kraPin}</TableCell>
-        <TableCell>
+        <TableCell sx={{ py: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{
+              width: 36, height: 36, borderRadius: 2, display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              bgcolor: '#EFF6FF', color: '#1565C0',
+            }}>
+              <StorefrontIcon fontSize="small" />
+            </Box>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A' }}>{tenant.name}</Typography>
+              <Typography variant="caption" sx={{ color: '#94A3B8' }}>{tenant.slug}</Typography>
+            </Box>
+          </Box>
+        </TableCell>
+        <TableCell sx={{ py: 2 }}>{tenant.email}</TableCell>
+        <TableCell sx={{ py: 2 }}>{tenant.phone}</TableCell>
+        <TableCell sx={{ py: 2 }}>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#64748B' }}>
+            {tenant.kraPin}
+          </Typography>
+        </TableCell>
+        <TableCell sx={{ py: 2 }}>
           <Chip
             label={tenant.isActive ? 'Active' : 'Inactive'}
             size="small"
-            color={tenant.isActive ? 'success' : 'default'}
+            sx={{
+              bgcolor: tenant.isActive ? '#ECFDF5' : '#F1F5F9',
+              color: tenant.isActive ? '#059669' : '#64748B',
+              fontWeight: 600,
+            }}
           />
         </TableCell>
-        <TableCell>
+        <TableCell sx={{ py: 2, color: '#64748B' }}>
           {new Date(tenant.createdAt).toLocaleDateString('en-KE', {
             day: '2-digit', month: 'short', year: 'numeric',
           })}
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell colSpan={8} sx={{ py: 0, borderBottom: open ? undefined : 'none' }}>
+        <TableCell colSpan={7} sx={{ py: 0, borderBottom: open ? undefined : 'none' }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ py: 2, px: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            <Box sx={{ py: 2.5, px: 4, bgcolor: '#F8FAFC', borderRadius: 2, my: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0F172A' }}>
                   Branches ({branches.length})
                 </Typography>
-                <Button size="small" startIcon={<AddIcon />} onClick={() => setBranchDialog(true)}>
+                <Button size="small" startIcon={<AddIcon />} onClick={() => setBranchDialog(true)}
+                  sx={{ bgcolor: '#EFF6FF', color: '#1565C0', '&:hover': { bgcolor: '#DBEAFE' } }}>
                   Add Branch
                 </Button>
               </Box>
               {branches.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">No branches yet</Typography>
               ) : (
-                <Table size="small">
+                <Table size="small" sx={{ '& td, & th': { border: 'none', py: 1.5 } }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>Name</TableCell>
@@ -140,15 +191,19 @@ function TenantRow({ tenant, onBranchCreated }: { tenant: Tenant; onBranchCreate
                   </TableHead>
                   <TableBody>
                     {branches.map((b) => (
-                      <TableRow key={b.id}>
-                        <TableCell>{b.name}</TableCell>
+                      <TableRow key={b.id} sx={{ '&:hover': { bgcolor: '#fff' }, borderRadius: 2 }}>
+                        <TableCell sx={{ fontWeight: 600 }}>{b.name}</TableCell>
                         <TableCell>{b.address}</TableCell>
                         <TableCell>{b.phone}</TableCell>
                         <TableCell>
                           <Chip
                             label={b.isActive ? 'Active' : 'Inactive'}
                             size="small"
-                            color={b.isActive ? 'success' : 'default'}
+                            sx={{
+                              bgcolor: b.isActive ? '#ECFDF5' : '#F1F5F9',
+                              color: b.isActive ? '#059669' : '#64748B',
+                              fontWeight: 600,
+                            }}
                           />
                         </TableCell>
                       </TableRow>
@@ -164,7 +219,7 @@ function TenantRow({ tenant, onBranchCreated }: { tenant: Tenant; onBranchCreate
       <Dialog open={branchDialog} onClose={() => setBranchDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add Branch to {tenant.name}</DialogTitle>
         <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+          <Stack spacing={2.5} sx={{ mt: 1.5 }}>
             <TextField label="Branch Name" fullWidth required
               value={branchForm.name}
               onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })} />
@@ -176,8 +231,8 @@ function TenantRow({ tenant, onBranchCreated }: { tenant: Tenant; onBranchCreate
               onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })} />
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setBranchDialog(false)}>Cancel</Button>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setBranchDialog(false)} sx={{ color: '#64748B' }}>Cancel</Button>
           <Button variant="contained" onClick={handleCreateBranch} disabled={saving || !branchForm.name || !branchForm.address}>
             {saving ? 'Creating...' : 'Create Branch'}
           </Button>
@@ -238,27 +293,64 @@ export default function AdminPage() {
     );
   }
 
+  const totalBranches = tenants.reduce((sum, t) => sum + (t.branches?.length || 0), 0);
+  const activeTenants = tenants.filter(t => t.isActive).length;
+
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
         <Box>
-          <Typography variant="h5" gutterBottom>Tenant Management</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="h5" sx={{ fontWeight: 800, color: '#0F172A' }}>Tenant Management</Typography>
+          <Typography variant="body2" sx={{ color: '#64748B', mt: 0.5 }}>
             Create and manage stores across the platform
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setTenantDialog(true)}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setTenantDialog(true)}
+          sx={{
+            px: 3,
+            boxShadow: '0 2px 8px rgba(21,101,192,0.3)',
+          }}
+        >
           New Tenant
         </Button>
       </Box>
 
-      <TableContainer component={Paper}>
+      <Grid container spacing={2.5} sx={{ mb: 4 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <StatCard
+            label="Total Tenants"
+            value={tenants.length}
+            icon={<StorefrontIcon />}
+            gradient="linear-gradient(135deg, #1565C0, #0D47A1)"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <StatCard
+            label="Total Branches"
+            value={totalBranches}
+            icon={<AccountTreeIcon />}
+            gradient="linear-gradient(135deg, #7C3AED, #5B21B6)"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <StatCard
+            label="Active Tenants"
+            value={activeTenants}
+            icon={<CheckCircleIcon />}
+            gradient="linear-gradient(135deg, #059669, #047857)"
+          />
+        </Grid>
+      </Grid>
+
+      <TableContainer component={Paper} sx={{ border: '1px solid #E2E8F0', boxShadow: 'none' }}>
         <Table>
           <TableHead>
-            <TableRow>
+            <TableRow sx={{ bgcolor: '#F8FAFC' }}>
               <TableCell width={50} />
-              <TableCell>Name</TableCell>
-              <TableCell>Slug</TableCell>
+              <TableCell>Store</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Phone</TableCell>
               <TableCell>KRA PIN</TableCell>
@@ -269,14 +361,20 @@ export default function AdminPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                  <Typography color="text.secondary">Loading...</Typography>
+                <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                  <Typography color="text.secondary">Loading tenants...</Typography>
                 </TableCell>
               </TableRow>
             ) : tenants.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                  <Typography color="text.secondary">No tenants yet. Click &quot;New Tenant&quot; to create one.</Typography>
+                <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                  <StorefrontIcon sx={{ fontSize: 48, color: '#CBD5E1', mb: 1 }} />
+                  <Typography variant="body1" sx={{ color: '#64748B', fontWeight: 600, mb: 0.5 }}>
+                    No tenants yet
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Click &quot;New Tenant&quot; to create your first store
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : (
@@ -289,9 +387,18 @@ export default function AdminPage() {
       </TableContainer>
 
       <Dialog open={tenantDialog} onClose={() => setTenantDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create New Tenant</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+        <Box sx={{
+          px: 3, pt: 3, pb: 1,
+          background: 'linear-gradient(135deg, #F8FAFC, #EFF6FF)',
+          borderBottom: '1px solid #E2E8F0',
+        }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#0F172A' }}>Create New Tenant</Typography>
+          <Typography variant="body2" sx={{ color: '#64748B', mb: 2 }}>
+            Set up a new store on the platform
+          </Typography>
+        </Box>
+        <DialogContent sx={{ pt: 3 }}>
+          <Stack spacing={2.5}>
             <TextField label="Business Name" fullWidth required
               value={tenantForm.name}
               onChange={(e) => handleSlugify(e.target.value)} />
@@ -302,16 +409,18 @@ export default function AdminPage() {
             <TextField label="Email" fullWidth required type="email"
               value={tenantForm.email}
               onChange={(e) => setTenantForm({ ...tenantForm, email: e.target.value })} />
-            <TextField label="Phone" fullWidth
-              value={tenantForm.phone}
-              onChange={(e) => setTenantForm({ ...tenantForm, phone: e.target.value })} />
-            <TextField label="KRA PIN" fullWidth
-              value={tenantForm.kraPin}
-              onChange={(e) => setTenantForm({ ...tenantForm, kraPin: e.target.value })} />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField label="Phone" fullWidth
+                value={tenantForm.phone}
+                onChange={(e) => setTenantForm({ ...tenantForm, phone: e.target.value })} />
+              <TextField label="KRA PIN" fullWidth
+                value={tenantForm.kraPin}
+                onChange={(e) => setTenantForm({ ...tenantForm, kraPin: e.target.value })} />
+            </Box>
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setTenantDialog(false)}>Cancel</Button>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setTenantDialog(false)} sx={{ color: '#64748B' }}>Cancel</Button>
           <Button variant="contained" onClick={handleCreateTenant}
             disabled={saving || !tenantForm.name || !tenantForm.slug || !tenantForm.email}>
             {saving ? 'Creating...' : 'Create Tenant'}

@@ -56,8 +56,10 @@ export default function ProductsPage() {
     if (!auth.user?.branchId) return;
     try {
       const res = await inventoryApi.getProducts(auth.user.branchId, { search: search || undefined, categoryId: catFilter || undefined, page: page + 1, pageSize: 20 });
-      if (Array.isArray(res.data)) { setProducts(res.data); setTotal(res.data.length); }
-      else { setProducts(res.data.items || res.data); setTotal(res.data.totalCount || res.data.length || 0); }
+      const d = res.data;
+      const items = Array.isArray(d) ? d : Array.isArray(d?.items) ? d.items : [];
+      setProducts(items);
+      setTotal(d?.totalCount ?? items.length);
     } catch { /* */ }
   }, [auth.user?.branchId, search, catFilter, page]);
 
@@ -124,7 +126,7 @@ export default function ProductsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {products.map((p) => (
+            {products?.map((p) => (
               <TableRow key={p.id} hover>
                 <TableCell><Typography variant="body2" fontWeight={600}>{p.name}</Typography></TableCell>
                 <TableCell>{p.sku}</TableCell>

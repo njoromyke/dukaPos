@@ -94,7 +94,7 @@ export default function DailyReportPage() {
             <Table size="small">
               <TableHead><TableRow><TableCell>Product</TableCell><TableCell align="right">Qty</TableCell><TableCell align="right">Revenue</TableCell></TableRow></TableHead>
               <TableBody>
-                {topProducts.map((p, i) => (
+                {topProducts?.map((p, i) => (
                   <TableRow key={i}><TableCell>{p.productName}</TableCell><TableCell align="right">{p.quantitySold}</TableCell><TableCell align="right">{formatKES(p.revenue)}</TableCell></TableRow>
                 ))}
               </TableBody>

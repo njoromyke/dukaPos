@@ -14,7 +14,9 @@ import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
+import Avatar from '@mui/material/Avatar';
 import SearchIcon from '@mui/icons-material/Search';
+import PeopleIcon from '@mui/icons-material/PeopleOutlined';
 import { useAuthStore } from '@/stores/auth-store';
 import { adminApi } from '@/lib/api';
 
@@ -27,6 +29,13 @@ interface User {
   isActive: boolean;
   createdAt: string;
 }
+
+const roleColors: Record<string, { bg: string; color: string }> = {
+  Admin: { bg: '#EFF6FF', color: '#1565C0' },
+  Manager: { bg: '#F5F3FF', color: '#7C3AED' },
+  Supervisor: { bg: '#FFF7ED', color: '#D97706' },
+  Cashier: { bg: '#F0FDF4', color: '#059669' },
+};
 
 export default function AdminUsersPage() {
   const auth = useAuthStore();
@@ -64,77 +73,108 @@ export default function AdminUsersPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
         <Box>
-          <Typography variant="h5" gutterBottom>All Users</Typography>
-          <Typography variant="body2" color="text.secondary">
-            View all users across all tenants
+          <Typography variant="h5" sx={{ fontWeight: 800, color: '#0F172A' }}>All Users</Typography>
+          <Typography variant="body2" sx={{ color: '#64748B', mt: 0.5 }}>
+            {users.length} user{users.length !== 1 ? 's' : ''} across all tenants
           </Typography>
         </Box>
       </Box>
 
       <TextField
-        placeholder="Search users..."
+        placeholder="Search by name, email or role..."
         size="small"
-        sx={{ mb: 2, width: 300 }}
+        sx={{
+          mb: 3, width: { xs: '100%', sm: 360 },
+          '& .MuiOutlinedInput-root': { bgcolor: '#fff' },
+        }}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon fontSize="small" />
-            </InputAdornment>
-          ),
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" sx={{ color: '#94A3B8' }} />
+              </InputAdornment>
+            ),
+          },
         }}
       />
 
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} sx={{ border: '1px solid #E2E8F0', boxShadow: 'none' }}>
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
+            <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+              <TableCell>User</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Role</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Created</TableCell>
+              <TableCell>Joined</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                  <Typography color="text.secondary">Loading...</Typography>
+                <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                  <Typography color="text.secondary">Loading users...</Typography>
                 </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                  <Typography color="text.secondary">No users found</Typography>
+                <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
+                  <PeopleIcon sx={{ fontSize: 48, color: '#CBD5E1', mb: 1 }} />
+                  <Typography variant="body1" sx={{ color: '#64748B', fontWeight: 600, mb: 0.5 }}>
+                    No users found
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Users will appear here once tenants create them
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((user) => (
-                <TableRow key={user.id} hover>
-                  <TableCell sx={{ fontWeight: 600 }}>{user.fullName}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Chip label={user.role} size="small" variant="outlined"
-                      color={user.role === 'Admin' ? 'primary' : user.role === 'Manager' ? 'secondary' : 'default'} />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={user.isActive ? 'Active' : 'Inactive'}
-                      size="small"
-                      color={user.isActive ? 'success' : 'default'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {new Date(user.createdAt).toLocaleDateString('en-KE', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                    })}
-                  </TableCell>
-                </TableRow>
-              ))
+              filtered.map((user) => {
+                const initials = user.fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                const rc = roleColors[user.role] || { bg: '#F1F5F9', color: '#64748B' };
+                return (
+                  <TableRow key={user.id} hover sx={{ '&:hover': { bgcolor: '#F8FAFC' } }}>
+                    <TableCell sx={{ py: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Avatar sx={{
+                          width: 36, height: 36, fontSize: '0.8rem', fontWeight: 700,
+                          bgcolor: rc.bg, color: rc.color,
+                        }}>
+                          {initials}
+                        </Avatar>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A' }}>
+                          {user.fullName}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ py: 2, color: '#64748B' }}>{user.email}</TableCell>
+                    <TableCell sx={{ py: 2 }}>
+                      <Chip label={user.role} size="small"
+                        sx={{ bgcolor: rc.bg, color: rc.color, fontWeight: 600 }} />
+                    </TableCell>
+                    <TableCell sx={{ py: 2 }}>
+                      <Chip
+                        label={user.isActive ? 'Active' : 'Inactive'}
+                        size="small"
+                        sx={{
+                          bgcolor: user.isActive ? '#ECFDF5' : '#F1F5F9',
+                          color: user.isActive ? '#059669' : '#64748B',
+                          fontWeight: 600,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ py: 2, color: '#64748B' }}>
+                      {new Date(user.createdAt).toLocaleDateString('en-KE', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                      })}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

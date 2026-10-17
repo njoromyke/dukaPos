@@ -15,6 +15,7 @@ import EmailIcon from '@mui/icons-material/EmailOutlined';
 import LockIcon from '@mui/icons-material/LockOutlined';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useAuthStore } from '@/stores/auth-store';
 import { authApi } from '@/lib/api';
 
@@ -51,28 +52,53 @@ export default function LoginPage() {
   };
 
   return (
-    <Paper elevation={0} sx={{ p: 5, width: '100%', maxWidth: 420, border: '1px solid', borderColor: 'divider' }}>
+    <Paper
+      elevation={0}
+      sx={{
+        p: { xs: 4, sm: 5 },
+        width: '100%',
+        maxWidth: 420,
+        bgcolor: 'rgba(255,255,255,0.95)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: 4,
+        border: '1px solid rgba(255,255,255,0.2)',
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+      }}
+    >
       <Box textAlign="center" mb={4}>
-        <Typography variant="h4" color="primary" gutterBottom>
-          DukaPoS
+        <Box sx={{
+          width: 56, height: 56, borderRadius: 3, mx: 'auto', mb: 2,
+          background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 14px rgba(21, 101, 192, 0.4)',
+        }}>
+          <StorefrontIcon sx={{ color: '#fff', fontSize: 28 }} />
+        </Box>
+        <Typography variant="h5" sx={{ fontWeight: 800, color: '#0F172A', mb: 0.5 }}>
+          Welcome back
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Sign in to your terminal
+        <Typography variant="body2" color="text.secondary">
+          Sign in to your DukaPoS terminal
         </Typography>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 2, '& .MuiAlert-icon': { alignItems: 'center' } }}>
+          {error}
+        </Alert>
+      )}
 
-      <Box component="form" onSubmit={handleSubmit} display="flex" flexDirection="column" gap={2}>
+      <Box component="form" onSubmit={handleSubmit} display="flex" flexDirection="column" gap={2.5}>
         <TextField
           label="Store ID"
-          placeholder="e.g. kilimani-duka"
+          placeholder="e.g. kilimani-duka or system"
           value={tenantSlug}
           onChange={(e) => setTenantSlug(e.target.value)}
           autoComplete="organization"
+          fullWidth
           slotProps={{
             input: {
-              startAdornment: <InputAdornment position="start"><StorefrontIcon fontSize="small" /></InputAdornment>,
+              startAdornment: <InputAdornment position="start"><StorefrontIcon fontSize="small" sx={{ color: '#64748B' }} /></InputAdornment>,
             },
           }}
         />
@@ -82,9 +108,10 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          fullWidth
           slotProps={{
             input: {
-              startAdornment: <InputAdornment position="start"><EmailIcon fontSize="small" /></InputAdornment>,
+              startAdornment: <InputAdornment position="start"><EmailIcon fontSize="small" sx={{ color: '#64748B' }} /></InputAdornment>,
             },
           }}
         />
@@ -94,9 +121,10 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
+          fullWidth
           slotProps={{
             input: {
-              startAdornment: <InputAdornment position="start"><LockIcon fontSize="small" /></InputAdornment>,
+              startAdornment: <InputAdornment position="start"><LockIcon fontSize="small" sx={{ color: '#64748B' }} /></InputAdornment>,
               endAdornment: (
                 <InputAdornment position="end">
                   <IconButton size="small" onClick={() => setShowPassword(!showPassword)} edge="end">
@@ -107,10 +135,31 @@ export default function LoginPage() {
             },
           }}
         />
-        <Button type="submit" variant="contained" size="large" disabled={loading} sx={{ mt: 1 }}>
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          disabled={loading}
+          endIcon={!loading && <ArrowForwardIcon />}
+          sx={{
+            mt: 1,
+            py: 1.5,
+            fontSize: '1rem',
+            background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
+            boxShadow: '0 4px 14px rgba(21, 101, 192, 0.35)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #1976D2 0%, #1565C0 100%)',
+              boxShadow: '0 6px 20px rgba(21, 101, 192, 0.45)',
+            },
+          }}
+        >
           {loading ? 'Signing in...' : 'Sign in'}
         </Button>
       </Box>
+
+      <Typography variant="caption" display="block" textAlign="center" mt={3} color="text.secondary">
+        Use &quot;system&quot; as Store ID for Super Admin access
+      </Typography>
     </Paper>
   );
 }

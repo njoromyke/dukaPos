@@ -116,7 +116,7 @@ export default function ProductGrid({ branchId, onAddProduct }: Props) {
           </Box>
         ) : (
           <Grid container spacing={1}>
-            {products.map((p) => (
+            {products?.map((p) => (
               <Grid size={{ xs: 4, sm: 3, md: 3 }} key={p.id}>
                 <Card
                   variant="outlined"

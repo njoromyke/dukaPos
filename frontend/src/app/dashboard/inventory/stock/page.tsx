@@ -72,7 +72,7 @@ export default function StockPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {products.map((p) => (
+            {products?.map((p) => (
               <TableRow key={p.id} hover sx={p.stockQuantity <= 0 ? { bgcolor: 'error.50' } : p.stockQuantity < 10 ? { bgcolor: 'warning.50' } : undefined}>
                 <TableCell><Typography variant="body2" fontWeight={600}>{p.name}</Typography></TableCell>
                 <TableCell>{p.sku}</TableCell>
