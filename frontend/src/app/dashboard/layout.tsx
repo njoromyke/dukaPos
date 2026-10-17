@@ -64,6 +64,7 @@ const baseNavItems: NavItem[] = [
 const adminNavItems: NavItem[] = [
   { type: 'subheader', label: 'Admin', adminOnly: true },
   { label: 'Tenants', href: '/dashboard/admin', icon: <AdminPanelSettingsIcon />, adminOnly: true },
+  { label: 'All Users', href: '/dashboard/admin/users', icon: <PeopleIcon />, adminOnly: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

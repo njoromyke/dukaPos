@@ -40,7 +40,8 @@ export default function LoginPage() {
       const res = await authApi.login(email, password, tenantSlug);
       const { token, user, tenantId } = res.data;
       auth.login(token, user, tenantId);
-      router.push('/pos');
+      const dest = user.role === 'SuperAdmin' ? '/dashboard/admin' : '/pos';
+      router.push(dest);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg || 'Invalid credentials');

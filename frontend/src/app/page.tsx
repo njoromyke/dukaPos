@@ -16,11 +16,12 @@ export default function Home() {
 
   useEffect(() => {
     if (auth.isAuthenticated) {
-      router.replace('/pos');
+      const dest = auth.user?.role === 'SuperAdmin' ? '/dashboard/admin' : '/pos';
+      router.replace(dest);
     } else if (typeof window !== 'undefined' && !localStorage.getItem('token')) {
       router.replace('/login');
     }
-  }, [auth.isAuthenticated, router]);
+  }, [auth.isAuthenticated, auth.user, router]);
 
   return (
     <Box display="flex" alignItems="center" justifyContent="center" minHeight="100vh">

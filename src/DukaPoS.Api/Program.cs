@@ -19,6 +19,7 @@ using DukaPoS.Messages.Payments;
 using DukaPoS.Messages.Reporting;
 using DukaPoS.Messages.Sales;
 using DukaPoS.Messages.Terminal;
+using DukaPoS.Messages.Admin;
 using DukaPoS.Messages.Tenancy;
 using Marten;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -590,18 +591,56 @@ reports.MapGet("/payment-breakdown", async (Guid branchId, DateOnly? from, DateO
 // ── Admin ──
 var admin = app.MapGroup("/api/admin").RequireAuthorization();
 
-admin.MapGet("/tenants", async (IDocumentStore store) =>
+admin.MapGet("/tenants", async (IMessageBus bus) =>
 {
-    await using var session = store.LightweightSession();
-    var tenants = await session.Query<Tenant>().ToListAsync();
-    return Results.Ok(tenants);
+    var result = await bus.InvokeAsync<IReadOnlyList<TenantDto>>(new GetTenantsQuery());
+    return Results.Ok(result);
 });
 
-admin.MapGet("/tenants/{tenantId:guid}/branches", async (Guid tenantId, IDocumentStore store) =>
+admin.MapPost("/tenants", async (CreateTenantCommand command, IMessageBus bus) =>
 {
-    await using var session = store.LightweightSession();
-    var tenant = await session.LoadAsync<Tenant>(tenantId);
-    return tenant != null ? Results.Ok(tenant.Branches) : Results.NotFound();
+    try
+    {
+        var result = await bus.InvokeAsync<TenantDto>(command);
+        return Results.Created($"/api/admin/tenants/{result.Id}", result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+admin.MapGet("/tenants/{tenantId:guid}/branches", async (Guid tenantId, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<IReadOnlyList<BranchSummaryDto>>(new GetTenantBranchesQuery(tenantId));
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { message = ex.Message });
+    }
+});
+
+admin.MapPost("/tenants/{tenantId:guid}/branches", async (Guid tenantId, CreateBranchForTenantCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var cmd = command with { TenantId = tenantId };
+        var result = await bus.InvokeAsync<BranchSummaryDto>(cmd);
+        return Results.Created($"/api/admin/tenants/{tenantId}/branches/{result.Id}", result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+admin.MapGet("/users", async (IMessageBus bus) =>
+{
+    var result = await bus.InvokeAsync<IReadOnlyList<UserDto>>(new GetAllUsersQuery());
+    return Results.Ok(result);
 });
 
 app.Run();

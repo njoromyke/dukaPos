@@ -120,7 +120,12 @@ export const expensesApi = {
 
 export const adminApi = {
   getTenants: () => api.get('/api/admin/tenants'),
+  createTenant: (data: { name: string; slug: string; kraPin: string; phone: string; email: string }) =>
+    api.post('/api/admin/tenants', data),
   getTenantBranches: (tenantId: string) => api.get(`/api/admin/tenants/${tenantId}/branches`),
+  createBranch: (tenantId: string, data: { name: string; address: string; phone: string }) =>
+    api.post(`/api/admin/tenants/${tenantId}/branches`, data),
+  getAllUsers: () => api.get('/api/admin/users'),
 };
 
 export default api;
