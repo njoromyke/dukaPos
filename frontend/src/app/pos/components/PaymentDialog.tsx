@@ -8,7 +8,8 @@ import {
 } from '@mui/material';
 import MoneyIcon from '@mui/icons-material/Money';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
-import { paymentsApi } from '@/lib/api';
+import { paymentsApi, receiptApi } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth-store';
 
 interface Sale {
   id: string | null;
@@ -26,6 +27,7 @@ interface Props {
 const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
 
 export default function PaymentDialog({ open, onClose, sale, onComplete }: Props) {
+  const auth = useAuthStore();
   const [method, setMethod] = useState<'cash' | 'mpesa'>('cash');
   const [cashAmount, setCashAmount] = useState('');
   const [mpesaPhone, setMpesaPhone] = useState('');
@@ -34,6 +36,45 @@ export default function PaymentDialog({ open, onClose, sale, onComplete }: Props
   const [success, setSuccess] = useState('');
 
   if (!sale) return null;
+
+  const printReceipt = async (paymentMethod: string, amountPaid: number, change: number, mpesaRef?: string) => {
+    try {
+      await receiptApi.generate({
+        saleId: sale.id!,
+        businessName: 'DukaPoS',
+        branchName: auth.user?.branchName || 'Branch',
+        paymentMethod,
+        amountPaid,
+        change,
+        mpesaRef,
+      });
+      const printWindow = window.open('', '_blank', 'width=320,height=600');
+      if (printWindow) {
+        printWindow.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
+<style>body{font-family:'Courier New',monospace;font-size:12px;width:280px;margin:0 auto;padding:10px}
+.c{text-align:center}.b{font-weight:bold}.d{border-top:1px dashed #000;margin:8px 0}
+.r{display:flex;justify-content:space-between}h2{margin:0;font-size:16px}
+@media print{body{width:100%}}</style></head><body>
+<div class="c"><h2 class="b">DukaPoS</h2><div>${auth.user?.branchName || 'Branch'}</div></div>
+<div class="d"></div>
+<div>Receipt: ${sale.saleNumber}</div>
+<div>Date: ${new Date().toLocaleString()}</div>
+<div class="d"></div>
+<div class="r"><span>Total:</span><span class="b">KES ${sale.grandTotal.toFixed(2)}</span></div>
+<div class="r"><span>Payment:</span><span>${paymentMethod}</span></div>
+<div class="r"><span>Amount:</span><span>KES ${amountPaid.toFixed(2)}</span></div>
+${change > 0 ? `<div class="r"><span>Change:</span><span>KES ${change.toFixed(2)}</span></div>` : ''}
+${mpesaRef ? `<div class="r"><span>M-Pesa Ref:</span><span>${mpesaRef}</span></div>` : ''}
+<div class="d"></div>
+<div class="c">Thank you for shopping with us!</div>
+<div class="c" style="margin-top:4px;font-size:10px">Powered by DukaPoS</div>
+</body></html>`);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+      }
+    } catch { /* receipt generation failed, don't block the flow */ }
+  };
 
   const quickAmounts = [100, 200, 500, 1000, 2000, 5000];
   const tendered = parseFloat(cashAmount) || 0;
@@ -49,6 +90,7 @@ export default function PaymentDialog({ open, onClose, sale, onComplete }: Props
     try {
       const res = await paymentsApi.recordCash(sale.id!, tendered);
       setSuccess(`Payment complete. Change: ${formatKES(res.data.change)}`);
+      printReceipt('Cash', tendered, res.data.change);
       setTimeout(() => {
         setSuccess('');
         setCashAmount('');
@@ -68,8 +110,11 @@ export default function PaymentDialog({ open, onClose, sale, onComplete }: Props
     setLoading(true);
     setError('');
     try {
-      await paymentsApi.initiateMpesa(sale.id!, mpesaPhone, sale.grandTotal);
+      const res = await paymentsApi.initiateMpesa(sale.id!, mpesaPhone, sale.grandTotal);
       setSuccess('STK Push sent. Customer should check their phone.');
+      if (res.data?.mpesaReceiptNumber) {
+        printReceipt('M-Pesa', sale.grandTotal, 0, res.data.mpesaReceiptNumber);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'M-Pesa request failed');
     }

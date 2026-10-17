@@ -135,4 +135,26 @@ export const auditApi = {
     api.get('/api/audit/logs', { params: { page: 1, pageSize: 50, ...params } }),
 };
 
+// ── Blobs / File Upload ──
+export const blobApi = {
+  upload: (uri: string, fileName: string, mimeType: string, category: string, referenceId?: string) => {
+    const formData = new FormData();
+    formData.append('file', { uri, name: fileName, type: mimeType } as unknown as Blob);
+    formData.append('category', category);
+    if (referenceId) formData.append('referenceId', referenceId);
+    return api.post('/api/blobs/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  getUrl: (id: string) => `${api.defaults.baseURL}/api/blobs/${id}`,
+  getByReference: (referenceId: string, category?: string) =>
+    api.get(`/api/blobs/by-reference/${referenceId}`, { params: { category } }),
+};
+
+// ── Receipts ──
+export const receiptApi = {
+  generate: (data: { saleId: string; businessName: string; branchName: string; branchAddress?: string; paymentMethod: string; amountPaid: number; change: number; mpesaRef?: string }) =>
+    api.post('/api/receipt/generate', data),
+  getBySale: (saleId: string) =>
+    api.get(`/api/receipt/by-sale/${saleId}`, { responseType: 'arraybuffer' }),
+};
+
 export default api;

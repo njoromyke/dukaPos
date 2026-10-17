@@ -140,6 +140,26 @@ export const tenantSettingsApi = {
   update: (data: Record<string, unknown>) => api.put('/api/tenant-settings', data),
 };
 
+export const blobApi = {
+  upload: (file: File, category: string, referenceId?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('category', category);
+    if (referenceId) formData.append('referenceId', referenceId);
+    return api.post('/api/blobs/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  getUrl: (id: string) => `${api.defaults.baseURL}/api/blobs/${id}`,
+  getByReference: (referenceId: string, category?: string) =>
+    api.get(`/api/blobs/by-reference/${referenceId}`, { params: { category } }),
+};
+
+export const receiptApi = {
+  generate: (data: { saleId: string; businessName: string; branchName: string; branchAddress?: string; paymentMethod: string; amountPaid: number; change: number; mpesaRef?: string }) =>
+    api.post('/api/receipt/generate', data),
+  getBySale: (saleId: string) =>
+    api.get(`/api/receipt/by-sale/${saleId}`, { responseType: 'blob' }),
+};
+
 export const adminApi = {
   getTenants: () => api.get('/api/admin/tenants'),
   createTenant: (data: { name: string; slug: string; kraPin: string; phone: string; email: string }) =>

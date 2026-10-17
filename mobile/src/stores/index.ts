@@ -87,6 +87,7 @@ export interface Product {
   vatRate: number;
   isWeighed: boolean;
   stockQuantity: number;
+  imageUrl?: string;
 }
 
 export interface Category {

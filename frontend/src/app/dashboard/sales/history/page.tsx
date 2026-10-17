@@ -22,7 +22,8 @@ import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/auth-store';
 import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { salesApi } from '@/lib/api';
+import ReceiptIcon from '@mui/icons-material/ReceiptLong';
+import { salesApi, receiptApi } from '@/lib/api';
 
 interface SaleRecord {
   id: string; saleNumber: string; status: string; cashierName: string;
@@ -57,6 +58,19 @@ export default function SalesHistoryPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleReceipt = async (e: React.MouseEvent, s: SaleRecord) => {
+    e.stopPropagation();
+    try {
+      const res = await receiptApi.getBySale(s.id);
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipt-${s.saleNumber}.bin`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* no receipt stored yet, generate one client-side */ }
+  };
+
   return (
     <Box>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
@@ -77,6 +91,7 @@ export default function SalesHistoryPage() {
               <TableCell>Status</TableCell>
               <TableCell align="right">Total</TableCell>
               <TableCell>Date</TableCell>
+              <TableCell width={50}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -87,6 +102,13 @@ export default function SalesHistoryPage() {
                 <TableCell><Chip label={s.status} size="small" color={statusColor[s.status] || 'default'} variant="outlined" /></TableCell>
                 <TableCell align="right">{formatKES(s.grandTotal)}</TableCell>
                 <TableCell>{dayjs(s.completedAt || s.startedAt).format('DD/MM/YYYY HH:mm')}</TableCell>
+                <TableCell>
+                  {s.status === 'Completed' && (
+                    <IconButton size="small" title="Download receipt" onClick={(e) => handleReceipt(e, s)}>
+                      <ReceiptIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
             {sales.length === 0 && (

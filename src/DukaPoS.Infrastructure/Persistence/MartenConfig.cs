@@ -5,6 +5,7 @@ using DukaPoS.Domain.Identity;
 using DukaPoS.Domain.Inventory;
 using DukaPoS.Domain.Payments;
 using DukaPoS.Domain.Sales;
+using DukaPoS.Domain.Storage;
 using DukaPoS.Domain.Tenancy;
 using Marten;
 using Weasel.Core;
@@ -100,6 +101,12 @@ public static class MartenConfig
         opts.Schema.For<Expense>().Index(x => x.Date);
         opts.Schema.For<Expense>().Index(x => x.Category);
         opts.Schema.For<Expense>().Index(x => x.Status);
+
+        // ── Storage (Blobs) ──
+        var blobEntries = opts.Schema.For<BlobEntry>();
+        blobEntries.DocumentAlias($"{WellKnownConstants.TablePrefix}blobs");
+        blobEntries.Index(x => x.Category);
+        blobEntries.Index(x => x.ReferenceId);
 
         return opts;
     }

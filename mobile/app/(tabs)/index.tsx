@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, FlatList, StyleSheet, Dimensions, RefreshControl,
-  Alert, Vibration, Pressable,
+  Alert, Vibration, Pressable, Image,
 } from 'react-native';
 import {
   Text, Searchbar, Chip, IconButton, Badge, FAB,
@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { usePosStore, useProductStore, useAuthStore } from '@/stores';
-import { salesApi, inventoryApi } from '@/lib/api';
+import { salesApi, inventoryApi, blobApi } from '@/lib/api';
 import type { Product, LineItem } from '@/stores';
 import CartSheet from '@/components/CartSheet';
 import PaymentSheet from '@/components/PaymentSheet';
@@ -51,9 +51,13 @@ function ProductTile({ item, onPress, index }: { item: Product; onPress: () => v
         }}
         style={[styles.productTile, { width: TILE_W, opacity: outOfStock ? 0.5 : 1 }, animStyle]}
       >
-        <View style={styles.tileIcon}>
-          <MaterialCommunityIcons name="cube-outline" size={22} color={Colors.light.primary} />
-        </View>
+        {item.imageUrl ? (
+          <Image source={{ uri: item.imageUrl.startsWith('http') ? item.imageUrl : `${blobApi.getUrl(item.imageUrl.replace('/api/blobs/', ''))}` }} style={styles.tileImage} />
+        ) : (
+          <View style={styles.tileIcon}>
+            <MaterialCommunityIcons name="cube-outline" size={22} color={Colors.light.primary} />
+          </View>
+        )}
         <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
         <Text style={styles.productPrice}>
           {item.sellingPrice.toFixed(0)}
@@ -427,6 +431,10 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: 10,
     backgroundColor: Colors.light.primaryLight,
     alignItems: 'center', justifyContent: 'center',
+    marginBottom: 8,
+  },
+  tileImage: {
+    width: 38, height: 38, borderRadius: 10,
     marginBottom: 8,
   },
   productName: {
