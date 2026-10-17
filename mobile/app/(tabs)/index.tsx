@@ -130,6 +130,11 @@ export default function PosScreen() {
   };
 
   const addProduct = async (product: Product) => {
+    if (product.stockQuantity <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert('Out of Stock', `${product.name} is out of stock.`);
+      return;
+    }
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       const saleId = await ensureSaleOpen();

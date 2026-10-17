@@ -26,6 +26,19 @@ public static class CreateProductHandler
 
         session.Store(product);
 
+        if (command.BranchId.HasValue && command.BranchId != Guid.Empty)
+        {
+            var stockLevel = new StockLevel
+            {
+                Id = Guid.NewGuid(),
+                ProductId = product.Id,
+                BranchId = command.BranchId.Value,
+                Quantity = command.InitialStock,
+                ReorderLevel = 10,
+            };
+            session.Store(stockLevel);
+        }
+
         return Task.FromResult(product);
     }
 }

@@ -34,11 +34,17 @@ public static class MartenConfig
         var auditLogs = opts.Schema.For<AuditLogEntry>();
         auditLogs.DocumentAlias($"{WellKnownConstants.TablePrefix}audit_log_entries");
         auditLogs.Index(x => x.CreatedAt);
+        auditLogs.Index(x => x.UserId);
+        auditLogs.Index(x => x.Action);
 
         // ── Tenancy (stored in default tenant) ──
         var tenants = opts.Schema.For<Tenant>();
         tenants.DocumentAlias($"{WellKnownConstants.TablePrefix}tenants");
         tenants.Index(x => x.Slug, i => i.IsUnique = true);
+
+        var tenantSettings = opts.Schema.For<TenantSettings>();
+        tenantSettings.DocumentAlias($"{WellKnownConstants.TablePrefix}tenant_settings");
+        tenantSettings.Index(x => x.TenantId);
 
         // ── Inventory ──
         var products = opts.Schema.For<Product>();
@@ -93,6 +99,7 @@ public static class MartenConfig
         opts.Schema.For<Expense>().Index(x => x.BranchId);
         opts.Schema.For<Expense>().Index(x => x.Date);
         opts.Schema.For<Expense>().Index(x => x.Category);
+        opts.Schema.For<Expense>().Index(x => x.Status);
 
         return opts;
     }

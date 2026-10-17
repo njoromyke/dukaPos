@@ -25,6 +25,9 @@ import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuthStore } from '@/stores/auth-store';
 import { expensesApi } from '@/lib/api';
 
@@ -53,6 +56,9 @@ interface Expense {
   recordedByName: string;
   expenseDate: string;
   createdAt: string;
+  status?: string;
+  approvedByName?: string;
+  rejectionReason?: string;
 }
 
 interface ExpenseSummary {
@@ -176,6 +182,30 @@ export default function ExpensesPage() {
     }
   };
 
+  const canApprove = ['Supervisor', 'Manager', 'Admin', 'SuperAdmin'].includes(auth.user?.role || '');
+
+  const handleApprove = async (id: string) => {
+    try {
+      await expensesApi.approve(id, auth.user?.id || '', auth.user?.name || '');
+      setSnack({ message: 'Expense approved', severity: 'success' });
+      loadExpenses();
+    } catch {
+      setSnack({ message: 'Failed to approve expense', severity: 'error' });
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    const reason = prompt('Rejection reason:');
+    if (!reason) return;
+    try {
+      await expensesApi.reject(id, auth.user?.id || '', reason);
+      setSnack({ message: 'Expense rejected', severity: 'success' });
+      loadExpenses();
+    } catch {
+      setSnack({ message: 'Failed to reject expense', severity: 'error' });
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -185,9 +215,12 @@ export default function ExpensesPage() {
             Track and manage business expenses
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)} sx={{ borderRadius: 2 }}>
-          Add Expense
-        </Button>
+        <Box display="flex" gap={1}>
+          <IconButton onClick={() => { loadExpenses(); loadSummary(); }} title="Refresh"><RefreshIcon /></IconButton>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)} sx={{ borderRadius: 2 }}>
+            Add Expense
+          </Button>
+        </Box>
       </Box>
 
       {summary && (
@@ -260,7 +293,8 @@ export default function ExpensesPage() {
               <TableCell>Description</TableCell>
               <TableCell>Recorded By</TableCell>
               <TableCell align="right">Amount</TableCell>
-              <TableCell align="center" width={60}></TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell align="center" width={120}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -294,10 +328,30 @@ export default function ExpensesPage() {
                   <TableCell align="right" sx={{ fontWeight: 700 }}>
                     {formatKES(expense.amount)}
                   </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={expense.status || 'Draft'}
+                      size="small"
+                      color={expense.status === 'Approved' ? 'success' : expense.status === 'Rejected' ? 'error' : expense.status === 'PendingApproval' ? 'warning' : 'default'}
+                      variant="outlined"
+                    />
+                  </TableCell>
                   <TableCell align="center">
-                    <IconButton size="small" color="error" onClick={() => handleDelete(expense.id)}>
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
+                    <Box display="flex" gap={0.5} justifyContent="center">
+                      {canApprove && (!expense.status || expense.status === 'Draft' || expense.status === 'PendingApproval') && (
+                        <>
+                          <IconButton size="small" color="success" onClick={() => handleApprove(expense.id)} title="Approve">
+                            <CheckCircleOutlineIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="error" onClick={() => handleReject(expense.id)} title="Reject">
+                            <CancelOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </>
+                      )}
+                      <IconButton size="small" color="error" onClick={() => handleDelete(expense.id)} title="Delete">
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))

@@ -24,6 +24,7 @@ import TablePagination from '@mui/material/TablePagination';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/EditOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuthStore } from '@/stores/auth-store';
 import { inventoryApi } from '@/lib/api';
 import { useSnackbar } from 'notistack';
@@ -95,7 +96,10 @@ export default function ProductsPage() {
     <Box>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
         <Typography variant="h5">Products</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>Add product</Button>
+        <Box display="flex" gap={1}>
+          <IconButton onClick={loadProducts} title="Refresh"><RefreshIcon /></IconButton>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>Add product</Button>
+        </Box>
       </Box>
 
       <Paper sx={{ p: 2, mb: 2 }}>

@@ -20,6 +20,7 @@ using DukaPoS.Messages.Reporting;
 using DukaPoS.Messages.Sales;
 using DukaPoS.Messages.Terminal;
 using DukaPoS.Messages.Admin;
+using DukaPoS.Messages.Audit;
 using DukaPoS.Messages.Tenancy;
 using Marten;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -414,6 +415,19 @@ inventory.MapPost("/categories", async (CreateCategoryCommand command, IMessageB
     return Results.Created($"/api/inventory/categories/{result.Id}", result);
 });
 
+inventory.MapPut("/categories", async (UpdateCategoryCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<Category>(command);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 // ── Terminal ──
 var terminal = app.MapGroup("/api/terminal").RequireAuthorization();
 
@@ -470,6 +484,32 @@ users.MapPut("/", async (UpdateUserCommand command, IMessageBus bus) =>
     try
     {
         var result = await bus.InvokeAsync<UserDto>(command);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+users.MapPost("/{userId:guid}/lock", async (Guid userId, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<UserDto>(new LockUserCommand(userId));
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+users.MapPost("/{userId:guid}/unlock", async (Guid userId, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<UserDto>(new UnlockUserCommand(userId));
         return Results.Ok(result);
     }
     catch (InvalidOperationException ex)
@@ -565,6 +605,34 @@ expenses.MapGet("/summary", async (Guid branchId, string? from, string? to, IMes
     return Results.Ok(result);
 });
 
+expenses.MapPost("/{id:guid}/approve", async (Guid id, ApproveExpenseCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var cmd = command with { Id = id };
+        var result = await bus.InvokeAsync<ExpenseDto>(cmd);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+expenses.MapPost("/{id:guid}/reject", async (Guid id, RejectExpenseCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var cmd = command with { Id = id };
+        var result = await bus.InvokeAsync<ExpenseDto>(cmd);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 // ── Reports ──
 var reports = app.MapGroup("/api/reports").RequireAuthorization();
 
@@ -642,6 +710,53 @@ admin.MapGet("/users", async (IMessageBus bus) =>
     var result = await bus.InvokeAsync<IReadOnlyList<UserDto>>(new GetAllUsersQuery());
     return Results.Ok(result);
 });
+
+// ── Audit ──
+var audit = app.MapGroup("/api/audit").RequireAuthorization();
+
+audit.MapGet("/logs", async (Guid? userId, string? action, string? entityType,
+    DateTimeOffset? from, DateTimeOffset? to, int? page, int? pageSize, IMessageBus bus) =>
+{
+    var result = await bus.InvokeAsync<AuditLogsResult>(
+        new GetAuditLogsQuery(userId, action, entityType, from, to, page ?? 1, pageSize ?? 50));
+    return Results.Ok(result);
+});
+
+// ── Tenant Settings ──
+var tenantSettings = app.MapGroup("/api/tenant-settings").RequireAuthorization();
+
+tenantSettings.MapGet("/{tenantId}", async (string tenantId, IMessageBus bus) =>
+{
+    var result = await bus.InvokeAsync<TenantSettingsDto>(new GetTenantSettingsQuery(tenantId));
+    return Results.Ok(result);
+});
+
+tenantSettings.MapPut("/", async (UpdateTenantSettingsCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<TenantSettingsDto>(command);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+// ── Auth extras ──
+auth.MapPost("/change-password", async (ChangePasswordCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        await bus.InvokeAsync(command);
+        return Results.Ok(new { changed = true });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+}).RequireAuthorization();
 
 app.Run();
 

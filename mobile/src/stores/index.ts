@@ -92,6 +92,7 @@ export interface Product {
 export interface Category {
   id: string;
   name: string;
+  parentId: string | null;
 }
 
 interface ProductState {

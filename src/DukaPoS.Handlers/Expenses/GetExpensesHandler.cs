@@ -38,7 +38,8 @@ public static class GetExpensesHandler
         var items = expenses.Select(e => new ExpenseDto(
             e.Id, e.BranchId, e.Category.ToString(),
             e.Description, e.Amount, e.Date,
-            e.ReceiptUrl, e.RecordedByName, e.CreatedAt)).ToList();
+            e.ReceiptUrl, e.RecordedByName, e.Status.ToString(),
+            e.ApprovedByName, e.ApprovedAt, e.RejectionReason, e.CreatedAt)).ToList();
 
         return new ExpensesResult(items, totalCount);
     }

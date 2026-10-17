@@ -20,6 +20,8 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/auth-store';
+import IconButton from '@mui/material/IconButton';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { salesApi } from '@/lib/api';
 
 interface SaleRecord {
@@ -57,7 +59,10 @@ export default function SalesHistoryPage() {
 
   return (
     <Box>
-      <Typography variant="h5" mb={3}>Sales History</Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+        <Typography variant="h5">Sales History</Typography>
+        <IconButton onClick={load} title="Refresh"><RefreshIcon /></IconButton>
+      </Box>
       <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <TextField label="From" type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(0); }} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField label="To" type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(0); }} slotProps={{ inputLabel: { shrink: true } }} />

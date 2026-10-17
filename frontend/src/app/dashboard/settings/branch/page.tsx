@@ -20,7 +20,7 @@ export default function BranchSettingsPage() {
 
   useEffect(() => {
     if (!auth.user?.branchId) return;
-    api.get(`/api/branches/${auth.user.branchId}`).then((r) => {
+    api.get(`/api/branch/${auth.user.branchId}`).then((r) => {
       setForm({ name: r.data.name || '', address: r.data.address || '', phone: r.data.phone || '' });
     }).catch(() => {});
   }, [auth.user?.branchId]);
@@ -28,7 +28,7 @@ export default function BranchSettingsPage() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      await api.put('/api/branches', { id: auth.user?.branchId, ...form });
+      await api.put('/api/branch', { id: auth.user?.branchId, ...form });
       enqueueSnackbar('Branch updated', { variant: 'success' });
     } catch { enqueueSnackbar('Save failed', { variant: 'error' }); }
     finally { setLoading(false); }

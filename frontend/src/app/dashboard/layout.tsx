@@ -31,6 +31,8 @@ import LogoutIcon from '@mui/icons-material/LogoutOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import MoneyOffIcon from '@mui/icons-material/MoneyOffOutlined';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
+import SecurityIcon from '@mui/icons-material/SecurityOutlined';
+import TuneIcon from '@mui/icons-material/TuneOutlined';
 import { useAuthStore } from '@/stores/auth-store';
 
 const DRAWER_WIDTH = 272;
@@ -60,6 +62,9 @@ const baseNavItems: NavItem[] = [
   { type: 'subheader', label: 'Settings' },
   { label: 'Branch', href: '/dashboard/settings/branch', icon: <StoreIcon /> },
   { label: 'Users', href: '/dashboard/settings/users', icon: <PeopleIcon /> },
+  { label: 'Tenant Rules', href: '/dashboard/settings/tenant', icon: <TuneIcon /> },
+  { type: 'subheader', label: 'Monitoring' },
+  { label: 'Audit Logs', href: '/dashboard/audit', icon: <SecurityIcon /> },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -81,6 +86,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace('/login');
     }
   }, [router]);
+
+  useEffect(() => {
+    if (auth.user?.role === 'Cashier') {
+      router.replace('/pos');
+    }
+  }, [auth.user?.role, router]);
 
   const isSuperAdmin = auth.user?.role === 'SuperAdmin';
 

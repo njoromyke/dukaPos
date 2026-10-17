@@ -78,8 +78,8 @@ export default function PaymentDialog({ open, onClose, sale, onComplete }: Props
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        Payment
+      <DialogTitle component="div" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>Payment</Typography>
         <Typography variant="h6" color="primary" sx={{ fontWeight: 800 }}>
           {formatKES(sale.grandTotal)}
         </Typography>

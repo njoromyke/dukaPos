@@ -124,7 +124,15 @@ export const expensesApi = {
 export const userApi = {
   changePin: (currentPin: string, newPin: string) =>
     api.post('/api/auth/change-pin', { currentPin, newPin }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/api/auth/change-password', { currentPassword, newPassword }),
   getProfile: () => api.get('/api/auth/profile'),
+};
+
+// ── Audit ──
+export const auditApi = {
+  getLogs: (params?: { userId?: string; action?: string; entityType?: string; from?: string; to?: string; page?: number; pageSize?: number }) =>
+    api.get('/api/audit/logs', { params: { page: 1, pageSize: 50, ...params } }),
 };
 
 export default api;

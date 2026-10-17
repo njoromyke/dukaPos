@@ -1,4 +1,5 @@
 using DukaPoS.Domain;
+using DukaPoS.Domain.Inventory;
 using DukaPoS.Domain.Sales;
 using DukaPoS.Messages.Sales;
 using Marten;
@@ -14,6 +15,22 @@ public static class AddLineItemHandler
 
         if (sale.Status != SaleStatus.Active)
             throw new InvalidOperationException("Sale is not active");
+
+        var stockLevel = await session.Query<StockLevel>()
+            .FirstOrDefaultAsync(s => s.ProductId == command.ProductId && s.BranchId == sale.BranchId);
+
+        var existingQty = sale.LineItems
+            .Where(li => li.ProductId == command.ProductId)
+            .Sum(li => li.Quantity);
+
+        var requestedTotal = existingQty + command.Quantity;
+
+        if (stockLevel == null || stockLevel.Quantity < requestedTotal)
+        {
+            var available = stockLevel?.Quantity ?? 0;
+            throw new InvalidOperationException(
+                $"Insufficient stock. Available: {available}, requested: {requestedTotal}");
+        }
 
         var lineItem = new SaleLineItem
         {

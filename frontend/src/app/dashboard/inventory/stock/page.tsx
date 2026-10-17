@@ -18,6 +18,8 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import IconButton from '@mui/material/IconButton';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuthStore } from '@/stores/auth-store';
 import { inventoryApi } from '@/lib/api';
 import { useSnackbar } from 'notistack';
@@ -38,7 +40,7 @@ export default function StockPage() {
 
   const load = useCallback(async () => {
     if (!auth.user?.branchId) return;
-    try { const r = await inventoryApi.getProducts(auth.user.branchId, { pageSize: 200 }); setProducts(Array.isArray(r.data) ? r.data : r.data.items || r.data); }
+    try { const r = await inventoryApi.getProducts(auth.user.branchId, { pageSize: 200 }); setProducts(Array.isArray(r.data) ? r.data : r.data.items || []); }
     catch { /* */ }
   }, [auth.user?.branchId]);
 
@@ -58,7 +60,10 @@ export default function StockPage() {
 
   return (
     <Box>
-      <Typography variant="h5" mb={3}>Stock Levels</Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+        <Typography variant="h5">Stock Levels</Typography>
+        <IconButton onClick={load} title="Refresh"><RefreshIcon /></IconButton>
+      </Box>
       <TableContainer component={Paper}>
         <Table size="small">
           <TableHead>

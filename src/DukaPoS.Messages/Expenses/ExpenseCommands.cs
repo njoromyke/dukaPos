@@ -18,6 +18,8 @@ public record UpdateExpenseCommand(
     string? ReceiptUrl);
 
 public record DeleteExpenseCommand(Guid Id);
+public record ApproveExpenseCommand(Guid Id, Guid ApprovedBy, string ApprovedByName);
+public record RejectExpenseCommand(Guid Id, Guid RejectedBy, string RejectedByName, string Reason);
 
 public record GetExpensesQuery(Guid BranchId, string? From, string? To, string? Category, int Page = 1, int PageSize = 20);
 
@@ -32,6 +34,10 @@ public record ExpenseDto(
     DateOnly Date,
     string? ReceiptUrl,
     string RecordedByName,
+    string Status,
+    string? ApprovedByName,
+    DateTimeOffset? ApprovedAt,
+    string? RejectionReason,
     DateTimeOffset CreatedAt);
 
 public record ExpensesResult(IReadOnlyList<ExpenseDto> Items, int TotalCount);

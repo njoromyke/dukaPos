@@ -11,6 +11,8 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/auth-store';
+import IconButton from '@mui/material/IconButton';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { salesApi } from '@/lib/api';
 import { useSnackbar } from 'notistack';
 
@@ -47,7 +49,10 @@ export default function TabsPage() {
 
   return (
     <Box>
-      <Typography variant="h5" mb={3}>Open Tabs ({tabs.length})</Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+        <Typography variant="h5">Open Tabs ({tabs.length})</Typography>
+        <IconButton onClick={load} title="Refresh"><RefreshIcon /></IconButton>
+      </Box>
       {tabs.length === 0 ? (
         <Paper sx={{ p: 5, textAlign: 'center' }}>
           <Typography color="text.secondary">No open tabs</Typography>
