@@ -1,4 +1,7 @@
+using DukaPoS.Domain.Enumerations;
+
 namespace DukaPoS.Domain.Payments;
+
 public class Payment
 {
     public Guid Id { get; set; }
@@ -15,5 +18,3 @@ public class Payment
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ConfirmedAt { get; set; }
 }
-public enum PaymentMethod { Cash, Mpesa }
-public enum PaymentStatus { Pending, Confirmed, Failed, Cancelled }

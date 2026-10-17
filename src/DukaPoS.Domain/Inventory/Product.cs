@@ -1,4 +1,7 @@
+using DukaPoS.Domain.Enumerations;
+
 namespace DukaPoS.Domain.Inventory;
+
 public class Product
 {
     public Guid Id { get; set; }
@@ -16,7 +19,6 @@ public class Product
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
-public enum VatRate { Standard = 16, Exempt = 0, ZeroRated = -1 }
 public class Category
 {
     public Guid Id { get; set; }
@@ -47,4 +49,3 @@ public class StockMovement
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
-public enum StockMovementReason { Sale, SaleReturn, PurchaseReceived, Adjustment, Damaged, Expired, Transfer }

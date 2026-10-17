@@ -1,3 +1,4 @@
+using DukaPoS.Domain.Enumerations;
 using DukaPoS.Domain.Identity;
 using DukaPoS.Infrastructure.Auth;
 using DukaPoS.Messages.Auth;

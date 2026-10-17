@@ -1,4 +1,7 @@
+using DukaPoS.Domain.Enumerations;
+
 namespace DukaPoS.Domain.Identity;
+
 public class User
 {
     public Guid Id { get; set; }
@@ -13,8 +16,6 @@ public class User
     public Guid BranchId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
-public enum UserRole { Cashier, Supervisor, Manager, Admin }
-public enum TerminalStatus { Active, Locked }
 public class TerminalSession
 {
     public Guid Id { get; set; }

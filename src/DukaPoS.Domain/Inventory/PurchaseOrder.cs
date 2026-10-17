@@ -1,3 +1,5 @@
+using DukaPoS.Domain.Enumerations;
+
 namespace DukaPoS.Domain.Inventory;
 
 public class PurchaseOrder
@@ -24,4 +26,3 @@ public class PurchaseOrderItem
     public decimal UnitCost { get; set; }
 }
 
-public enum PurchaseOrderStatus { Draft, Ordered, PartiallyReceived, Received, Cancelled }

@@ -7,18 +7,19 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SecureStore from 'expo-secure-store';
 
-import { lightTheme } from './theme';
-import { useAuthStore, usePosStore } from './stores';
+import { lightTheme } from './src/theme';
+import { useAuthStore, usePosStore } from './src/stores';
 
-import LoginScreen from './screens/LoginScreen';
-import LockScreen from './screens/LockScreen';
-import PosScreen from './screens/PosScreen';
-import BarcodeScanner from './screens/BarcodeScanner';
-import InventoryScreen from './screens/InventoryScreen';
-import ReportsScreen from './screens/ReportsScreen';
-import SettingsScreen from './screens/SettingsScreen';
-import ProductDetailScreen from './screens/ProductDetailScreen';
-import SalesHistoryScreen from './screens/SalesHistoryScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import LockScreen from './src/screens/LockScreen';
+import PosScreen from './src/screens/PosScreen';
+import BarcodeScanner from './src/screens/BarcodeScanner';
+import InventoryScreen from './src/screens/InventoryScreen';
+import ReportsScreen from './src/screens/ReportsScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import ProductDetailScreen from './src/screens/ProductDetailScreen';
+import SalesHistoryScreen from './src/screens/SalesHistoryScreen';
+import ExpensesScreen from './src/screens/ExpensesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -47,6 +48,11 @@ function MainTabs() {
         name="Inventory"
         component={InventoryScreen}
         options={{ tabBarIcon: ({ color }) => <TabIcon name="package-variant" color={color} /> }}
+      />
+      <Tab.Screen
+        name="Expenses"
+        component={ExpensesScreen}
+        options={{ tabBarIcon: ({ color }) => <TabIcon name="cash-minus" color={color} /> }}
       />
       <Tab.Screen
         name="Reports"

@@ -1,4 +1,6 @@
 using DukaPoS.Domain;
+using DukaPoS.Domain.Expenses;
+using DukaPoS.Domain;
 using DukaPoS.Domain.Fiscal;
 using DukaPoS.Domain.Identity;
 using DukaPoS.Domain.Inventory;
@@ -87,6 +89,11 @@ public static class MartenConfig
         fiscalInvoices.DocumentAlias($"{WellKnownConstants.TablePrefix}fiscal_invoices");
         fiscalInvoices.Index(x => x.SaleId);
         fiscalInvoices.Index(x => x.SubmissionStatus);
+
+        // Expenses
+        opts.Schema.For<Expense>().Index(x => x.BranchId);
+        opts.Schema.For<Expense>().Index(x => x.Date);
+        opts.Schema.For<Expense>().Index(x => x.Category);
 
         return opts;
     }
