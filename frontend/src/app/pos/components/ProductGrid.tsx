@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Box, TextField, InputAdornment, Chip, Card, CardActionArea,
-  CardContent, Typography, Grid, CircularProgress,
+  CardContent, Typography, CircularProgress,
 } from '@mui/material';
+import Grid from '@mui/material/Grid2';
 import SearchIcon from '@mui/icons-material/Search';
 import { inventoryApi } from '@/lib/api';
 
