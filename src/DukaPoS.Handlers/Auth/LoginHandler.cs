@@ -11,13 +11,17 @@ public static class LoginHandler
 {
     public static async Task<LoginResult> Handle(
         LoginCommand command,
+        IDocumentStore store,
         IDocumentSession session,
         IJwtTokenService jwtService,
         IPasswordService passwordService)
     {
-        if (string.IsNullOrEmpty(command.TenantSlug))
+        var isSuperAdmin = string.IsNullOrWhiteSpace(command.TenantSlug)
+                           || command.TenantSlug.Equals("system", StringComparison.OrdinalIgnoreCase);
+
+        if (isSuperAdmin)
         {
-            return await HandleSuperAdminLogin(command, session, jwtService, passwordService);
+            return await HandleSuperAdminLogin(command, store, jwtService, passwordService);
         }
 
         var tenant = await session.Query<Tenant>()
@@ -51,10 +55,12 @@ public static class LoginHandler
 
     private static async Task<LoginResult> HandleSuperAdminLogin(
         LoginCommand command,
-        IDocumentSession session,
+        IDocumentStore store,
         IJwtTokenService jwtService,
         IPasswordService passwordService)
     {
+        await using var session = store.LightweightSession();
+
         var user = await session.Query<User>()
             .FirstOrDefaultAsync(u => u.Email == command.Email && u.Role == UserRole.SuperAdmin)
             ?? throw new InvalidOperationException("Invalid credentials");
