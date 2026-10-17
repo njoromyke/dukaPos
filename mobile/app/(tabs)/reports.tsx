@@ -79,7 +79,7 @@ export default function ReportsScreen() {
   };
 
   const isToday = date === today;
-  const maxRevenue = topProducts.length > 0 ? Math.max(...topProducts.map((p) => p.revenue)) : 1;
+  const maxRevenue = topProducts.length > 0 ? Math.max(...topProducts?.map((p) => p.revenue)) : 1;
 
   return (
     <View style={styles.container}>
@@ -149,7 +149,7 @@ export default function ReportsScreen() {
           {topProducts.length === 0 ? (
             <Text style={styles.noData}>No data for this date</Text>
           ) : (
-            topProducts.map((p, i) => (
+            topProducts?.map((p, i) => (
               <View key={i} style={styles.productRow}>
                 <View style={styles.productInfo}>
                   <Text style={styles.productRank}>{i + 1}</Text>

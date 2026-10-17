@@ -84,7 +84,7 @@ export default function ReportsScreen({ navigation }: any) {
     { label: 'Top Method', value: summary?.topPaymentMethod || '—', icon: 'credit-card-outline' },
   ];
 
-  const maxRevenue = topProducts.length > 0 ? Math.max(...topProducts.map((p) => p.revenue)) : 1;
+  const maxRevenue = topProducts?.length > 0 ? Math.max(...topProducts?.map((p) => p.revenue)) : 1;
 
   return (
     <ScrollView
@@ -133,10 +133,10 @@ export default function ReportsScreen({ navigation }: any) {
         <Text variant="titleSmall" style={{ fontWeight: '700', marginBottom: 12 }}>
           Top 5 Products by Revenue
         </Text>
-        {topProducts.length === 0 ? (
+        {topProducts?.length === 0 ? (
           <Text variant="bodySmall" style={{ color: theme.colors.outline }}>No data for this date</Text>
         ) : (
-          topProducts.map((p, i) => (
+          topProducts?.map((p, i) => (
             <View key={i} style={styles.productRow}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>

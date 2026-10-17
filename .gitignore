@@ -137,3 +137,12 @@ rider/
 *obj/
 *rider/
 
+
+// =========================
+// Expo generated
+// =========================
+
+.expo/
+/android/app/build/
+/ios/Pods/
+
