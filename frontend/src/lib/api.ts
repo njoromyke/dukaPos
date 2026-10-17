@@ -106,4 +106,21 @@ export const reportsApi = {
     api.get('/api/reports/payment-breakdown', { params: { branchId, from, to } }),
 };
 
+export const expensesApi = {
+  list: (branchId: string, params?: { from?: string; to?: string; category?: string; page?: number; pageSize?: number }) =>
+    api.get('/api/expenses', { params: { branchId, page: 1, pageSize: 20, ...params } }),
+  create: (data: { branchId: string; category: string; description: string; amount: number; receiptUrl?: string; recordedBy: string; recordedByName: string; expenseDate?: string }) =>
+    api.post('/api/expenses', data),
+  update: (data: { id: string; category: string; description: string; amount: number; receiptUrl?: string }) =>
+    api.put('/api/expenses', data),
+  delete: (id: string) => api.delete(`/api/expenses/${id}`),
+  summary: (branchId: string, from: string, to: string) =>
+    api.get('/api/expenses/summary', { params: { branchId, from, to } }),
+};
+
+export const adminApi = {
+  getTenants: () => api.get('/api/admin/tenants'),
+  getTenantBranches: (tenantId: string) => api.get(`/api/admin/tenants/${tenantId}/branches`),
+};
+
 export default api;
