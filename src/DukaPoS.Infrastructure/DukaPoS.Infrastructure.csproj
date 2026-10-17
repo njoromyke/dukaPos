@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net9.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Marten" Version="7.34.2" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DukaPoS.Domain\DukaPoS.Domain.csproj" />
+    <ProjectReference Include="..\DukaPoS.Messages\DukaPoS.Messages.csproj" />
+  </ItemGroup>
+</Project>
