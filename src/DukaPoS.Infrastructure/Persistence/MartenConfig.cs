@@ -1,3 +1,4 @@
+using DukaPoS.Domain;
 using DukaPoS.Domain.Fiscal;
 using DukaPoS.Domain.Identity;
 using DukaPoS.Domain.Inventory;
@@ -15,41 +16,77 @@ public static class MartenConfig
     {
         opts.Connection(connectionString);
         opts.AutoCreateSchemaObjects = AutoCreate.All;
+        opts.DatabaseSchemaName = WellKnownConstants.SchemaName;
 
         opts.Policies.AllDocumentsAreMultiTenanted();
 
-        // Identity
-        opts.Schema.For<User>().Index(x => x.Email);
-        opts.Schema.For<User>().Index(x => x.PinHash!);
-        opts.Schema.For<TerminalSession>().Index(x => x.UserId);
-        opts.Schema.For<AuditLogEntry>().Index(x => x.CreatedAt);
+        // ── Identity ──
+        var users = opts.Schema.For<User>();
+        users.DocumentAlias($"{WellKnownConstants.TablePrefix}users");
+        users.Index(x => x.Email);
+        users.Index(x => x.PinHash!);
 
-        // Tenancy (stored in default tenant)
-        opts.Schema.For<Tenant>().Index(x => x.Slug, i => i.IsUnique = true);
+        var terminalSessions = opts.Schema.For<TerminalSession>();
+        terminalSessions.DocumentAlias($"{WellKnownConstants.TablePrefix}terminal_sessions");
+        terminalSessions.Index(x => x.UserId);
 
-        // Inventory
-        opts.Schema.For<Product>().Index(x => x.Barcode!);
-        opts.Schema.For<Product>().Index(x => x.Sku);
-        opts.Schema.For<Product>().FullTextIndex(x => x.Name);
-        opts.Schema.For<Category>().Index(x => x.Name);
-        opts.Schema.For<StockLevel>()
-            .Index(x => new { x.ProductId, x.BranchId }, i => i.IsUnique = true);
-        opts.Schema.For<StockMovement>().Index(x => x.ProductId);
-        opts.Schema.For<Supplier>().Index(x => x.Name);
-        opts.Schema.For<PurchaseOrder>().Index(x => x.Status);
+        var auditLogs = opts.Schema.For<AuditLogEntry>();
+        auditLogs.DocumentAlias($"{WellKnownConstants.TablePrefix}audit_log_entries");
+        auditLogs.Index(x => x.CreatedAt);
 
-        // Sales
-        opts.Schema.For<Sale>().Index(x => x.Status);
-        opts.Schema.For<Sale>().Index(x => x.BranchId);
-        opts.Schema.For<Tab>().Index(x => x.SaleId);
+        // ── Tenancy (stored in default tenant) ──
+        var tenants = opts.Schema.For<Tenant>();
+        tenants.DocumentAlias($"{WellKnownConstants.TablePrefix}tenants");
+        tenants.Index(x => x.Slug, i => i.IsUnique = true);
 
-        // Payments
-        opts.Schema.For<Payment>().Index(x => x.SaleId);
-        opts.Schema.For<Payment>().Index(x => x.CheckoutRequestId!);
+        // ── Inventory ──
+        var products = opts.Schema.For<Product>();
+        products.DocumentAlias($"{WellKnownConstants.TablePrefix}products");
+        products.Index(x => x.Barcode!);
+        products.Index(x => x.Sku);
+        products.FullTextIndex(x => x.Name);
 
-        // Fiscal
-        opts.Schema.For<FiscalInvoice>().Index(x => x.SaleId);
-        opts.Schema.For<FiscalInvoice>().Index(x => x.SubmissionStatus);
+        var categories = opts.Schema.For<Category>();
+        categories.DocumentAlias($"{WellKnownConstants.TablePrefix}categories");
+        categories.Index(x => x.Name);
+
+        var stockLevels = opts.Schema.For<StockLevel>();
+        stockLevels.DocumentAlias($"{WellKnownConstants.TablePrefix}stock_levels");
+        stockLevels.Index(x => new { x.ProductId, x.BranchId }, i => i.IsUnique = true);
+
+        var stockMovements = opts.Schema.For<StockMovement>();
+        stockMovements.DocumentAlias($"{WellKnownConstants.TablePrefix}stock_movements");
+        stockMovements.Index(x => x.ProductId);
+
+        var suppliers = opts.Schema.For<Supplier>();
+        suppliers.DocumentAlias($"{WellKnownConstants.TablePrefix}suppliers");
+        suppliers.Index(x => x.Name);
+
+        var purchaseOrders = opts.Schema.For<PurchaseOrder>();
+        purchaseOrders.DocumentAlias($"{WellKnownConstants.TablePrefix}purchase_orders");
+        purchaseOrders.Index(x => x.Status);
+
+        // ── Sales ──
+        var sales = opts.Schema.For<Sale>();
+        sales.DocumentAlias($"{WellKnownConstants.TablePrefix}sales");
+        sales.Index(x => x.Status);
+        sales.Index(x => x.BranchId);
+
+        var tabs = opts.Schema.For<Tab>();
+        tabs.DocumentAlias($"{WellKnownConstants.TablePrefix}tabs");
+        tabs.Index(x => x.SaleId);
+
+        // ── Payments ──
+        var payments = opts.Schema.For<Payment>();
+        payments.DocumentAlias($"{WellKnownConstants.TablePrefix}payments");
+        payments.Index(x => x.SaleId);
+        payments.Index(x => x.CheckoutRequestId!);
+
+        // ── Fiscal ──
+        var fiscalInvoices = opts.Schema.For<FiscalInvoice>();
+        fiscalInvoices.DocumentAlias($"{WellKnownConstants.TablePrefix}fiscal_invoices");
+        fiscalInvoices.Index(x => x.SaleId);
+        fiscalInvoices.Index(x => x.SubmissionStatus);
 
         return opts;
     }

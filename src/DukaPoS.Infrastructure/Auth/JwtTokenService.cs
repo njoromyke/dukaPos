@@ -23,8 +23,12 @@ public class JwtTokenService : IJwtTokenService
 
     public string GenerateToken(Guid userId, string email, string role, string tenantId, Guid branchId)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+        var secret = _config["Jwt:Secret"]
+                     ?? throw new InvalidOperationException("Jwt:Secret is required.");
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var expiryMinutes = int.Parse(_config["Jwt:ExpiryMinutes"] ?? "480");
 
         var claims = new[]
         {
@@ -38,9 +42,9 @@ public class JwtTokenService : IJwtTokenService
 
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"] ?? "DukaPoS",
-            audience: _config["Jwt:Audience"] ?? "DukaPoS",
+            audience: _config["Jwt:Audience"] ?? "DukaPoS.Client",
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(8),
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
             signingCredentials: creds
         );
 

@@ -1,3 +1,5 @@
+using DukaPoS.Domain;
+
 namespace DukaPoS.Api.Middleware;
 
 public class TenantResolutionMiddleware
@@ -11,8 +13,7 @@ public class TenantResolutionMiddleware
 
     public async Task InvokeAsync(HttpContext context, TenantContext tenantContext)
     {
-        // Try X-Tenant-Id header first (mobile/desktop clients)
-        if (context.Request.Headers.TryGetValue("X-Tenant-Id", out var headerTenantId))
+        if (context.Request.Headers.TryGetValue(WellKnownConstants.TenantHeaderName, out var headerTenantId))
         {
             tenantContext.TenantId = headerTenantId.ToString();
         }

@@ -1,5 +1,8 @@
 using System.Text;
 using DukaPoS.Api.Middleware;
+using DukaPoS.Domain;
+using DukaPoS.Domain.Inventory;
+using DukaPoS.Domain.Sales;
 using DukaPoS.Handlers.Sales;
 using DukaPoS.Infrastructure.Auth;
 using DukaPoS.Infrastructure.Persistence;
@@ -10,10 +13,7 @@ using DukaPoS.Messages.Reporting;
 using DukaPoS.Messages.Sales;
 using DukaPoS.Messages.Terminal;
 using DukaPoS.Messages.Tenancy;
-using DukaPoS.Domain.Identity;
-using DukaPoS.Domain.Inventory;
-using DukaPoS.Domain.Sales;
-using DukaPoS.Domain.Tenancy;
+using Marten;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Wolverine;
@@ -21,21 +21,50 @@ using Wolverine.Marten;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("Postgres")!;
-var jwtKey = builder.Configuration["Jwt:Key"]!;
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                       ?? throw new InvalidOperationException("DefaultConnection is required.");
+
+var jwtSecret = builder.Configuration["Jwt:Secret"]
+                ?? throw new InvalidOperationException("Jwt:Secret is required.");
 
 // ── Services ──
 builder.Services.AddScoped<TenantContext>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IPasswordService, PasswordService>();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "DukaPoS API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new()
+    {
+        Description = "JWT Authorization header. Example: 'Bearer {token}'",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new()
+    {
+        {
+            new() { Reference = new() { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "Bearer" } },
+            Array.Empty<string>()
+        }
+    });
+});
 
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    options.AddPolicy(WellKnownConstants.DukaPosCorsPolicy, policy =>
+    {
+        policy.WithOrigins(
+                builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?? ["http://localhost:3000"])
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -47,9 +76,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "DukaPoS",
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "DukaPoS",
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
 builder.Services.AddAuthorization();
@@ -70,15 +100,25 @@ builder.Host.UseWolverine(opts =>
     opts.Policies.UseDurableLocalQueues();
 });
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // ── Middleware ──
-app.UseCors();
-app.UseSwagger();
-app.UseSwaggerUI();
+app.UseCors(WellKnownConstants.DukaPosCorsPolicy);
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<TenantResolutionMiddleware>();
+
+app.MapHealthChecks("/health").AllowAnonymous();
 
 // ══════════════════════════════════════════════════════════
 //  API ENDPOINTS

@@ -20,3 +20,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+.rider/
+rider/
+*obj/
+*rider/
+
