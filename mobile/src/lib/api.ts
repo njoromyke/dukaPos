@@ -62,6 +62,9 @@ export const salesApi = {
 
   voidSale: (saleId: string, voidedBy: string, reason: string) =>
     api.post('/api/sales/void', { saleId, voidedBy, reason }),
+
+  getHistory: (branchId: string, params?: { from?: string; to?: string; page?: number; pageSize?: number }) =>
+    api.get('/api/sales/history', { params: { branchId, page: 1, pageSize: 20, ...params } }),
 };
 
 // ── Payments ──
@@ -85,6 +88,8 @@ export const inventoryApi = {
   createProduct: (data: any) => api.post('/api/inventory/products', data),
   updateProduct: (data: any) => api.put('/api/inventory/products', data),
   adjustStock: (data: any) => api.post('/api/inventory/stock/adjust', data),
+  getStockLevels: (branchId: string) =>
+    api.get('/api/inventory/stock', { params: { branchId } }),
 };
 
 // ── Terminal ──
@@ -92,6 +97,23 @@ export const terminalApi = {
   lock: (sessionId: string) => api.post('/api/terminal/lock', { sessionId }),
   unlockWithPin: (sessionId: string, pin: string) =>
     api.post('/api/terminal/unlock/pin', { sessionId, pin }),
+};
+
+// ── Reports ──
+export const reportsApi = {
+  getDailySummary: (branchId: string, date: string) =>
+    api.get('/api/reports/daily-summary', { params: { branchId, date } }),
+  getTopProducts: (branchId: string, from: string, to: string, top: number = 5) =>
+    api.get('/api/reports/top-products', { params: { branchId, from, to, top } }),
+  getPaymentBreakdown: (branchId: string, from: string, to: string) =>
+    api.get('/api/reports/payment-breakdown', { params: { branchId, from, to } }),
+};
+
+// ── User ──
+export const userApi = {
+  changePin: (currentPin: string, newPin: string) =>
+    api.post('/api/auth/change-pin', { currentPin, newPin }),
+  getProfile: () => api.get('/api/auth/profile'),
 };
 
 export default api;
