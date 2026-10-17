@@ -14,12 +14,21 @@ import LoginScreen from './screens/LoginScreen';
 import LockScreen from './screens/LockScreen';
 import PosScreen from './screens/PosScreen';
 import BarcodeScanner from './screens/BarcodeScanner';
+import InventoryScreen from './screens/InventoryScreen';
+import ReportsScreen from './screens/ReportsScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import ProductDetailScreen from './screens/ProductDetailScreen';
+import SalesHistoryScreen from './screens/SalesHistoryScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const queryClient = new QueryClient();
 
-// ── Bottom tab navigator for the main app ──
+function TabIcon({ name, color }: { name: string; color: string }) {
+  const { Icon } = require('react-native-paper');
+  return <Icon source={name} size={24} color={color} />;
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -36,43 +45,21 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Inventory"
-        component={PlaceholderScreen('Inventory')}
+        component={InventoryScreen}
         options={{ tabBarIcon: ({ color }) => <TabIcon name="package-variant" color={color} /> }}
       />
       <Tab.Screen
         name="Reports"
-        component={PlaceholderScreen('Reports')}
+        component={ReportsScreen}
         options={{ tabBarIcon: ({ color }) => <TabIcon name="chart-bar" color={color} /> }}
       />
       <Tab.Screen
         name="Settings"
-        component={PlaceholderScreen('Settings')}
+        component={SettingsScreen}
         options={{ tabBarIcon: ({ color }) => <TabIcon name="cog-outline" color={color} /> }}
       />
     </Tab.Navigator>
   );
-}
-
-// Placeholder for screens not yet built
-function PlaceholderScreen(name: string) {
-  return function Screen() {
-    const { Text, useTheme } = require('react-native-paper');
-    const { View } = require('react-native');
-    const theme = useTheme();
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}>
-        <Text variant="headlineSmall" style={{ fontWeight: '700' }}>{name}</Text>
-        <Text variant="bodyMedium" style={{ color: theme.colors.outline, marginTop: 4 }}>
-          Coming in Phase 4
-        </Text>
-      </View>
-    );
-  };
-}
-
-function TabIcon({ name, color }: { name: string; color: string }) {
-  const { Icon } = require('react-native-paper');
-  return <Icon source={name} size={24} color={color} />;
 }
 
 export default function App() {
@@ -80,13 +67,11 @@ export default function App() {
   const pos = usePosStore();
   const [initializing, setInitializing] = useState(true);
 
-  // Restore auth on app start
   useEffect(() => {
     (async () => {
       const token = await SecureStore.getItemAsync('token');
       const tenantId = await SecureStore.getItemAsync('tenantId');
       if (token && tenantId) {
-        // In production, validate the token with the API
         auth.login(token, null as any, tenantId);
       }
       setInitializing(false);
@@ -117,12 +102,15 @@ export default function App() {
                     <BarcodeScanner
                       onProductFound={(p) => {
                         navigation.goBack();
-                        // Product is added to cart via PosScreen
                       }}
                       onClose={() => navigation.goBack()}
                     />
                   )}
                 </Stack.Screen>
+                <Stack.Screen name="ProductDetail" component={ProductDetailScreen}
+                  options={{ presentation: 'card' }} />
+                <Stack.Screen name="SalesHistory" component={SalesHistoryScreen}
+                  options={{ presentation: 'card' }} />
               </>
             )}
           </Stack.Navigator>
