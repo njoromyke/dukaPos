@@ -1,3 +1,4 @@
+using DukaPoS.Domain.Enumerations;
 using DukaPoS.Domain.Sales;
 using DukaPoS.Messages.Sales;
 using Marten;

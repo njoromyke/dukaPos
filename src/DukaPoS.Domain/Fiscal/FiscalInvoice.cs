@@ -1,3 +1,5 @@
+using DukaPoS.Domain.Enumerations;
+
 namespace DukaPoS.Domain.Fiscal;
 
 public class FiscalInvoice
@@ -15,4 +17,3 @@ public class FiscalInvoice
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public enum FiscalSubmissionStatus { Pending, Submitted, Acknowledged, Failed }
