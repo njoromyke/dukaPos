@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
@@ -28,25 +28,42 @@ import PeopleIcon from '@mui/icons-material/PeopleOutlined';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSaleOutlined';
 import LogoutIcon from '@mui/icons-material/LogoutOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
+import MoneyOffIcon from '@mui/icons-material/MoneyOffOutlined';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import { useAuthStore } from '@/stores/auth-store';
 
 const DRAWER_WIDTH = 260;
 
-const navItems = [
+interface NavItem {
+  type?: 'subheader';
+  label: string;
+  href?: string;
+  icon?: React.ReactNode;
+  adminOnly?: boolean;
+}
+
+const baseNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: <DashboardIcon /> },
-  { type: 'subheader' as const, label: 'Inventory' },
+  { type: 'subheader', label: 'Inventory' },
   { label: 'Products', href: '/dashboard/inventory/products', icon: <InventoryIcon /> },
   { label: 'Categories', href: '/dashboard/inventory/categories', icon: <CategoryIcon /> },
   { label: 'Stock Levels', href: '/dashboard/inventory/stock', icon: <WarehouseIcon /> },
-  { type: 'subheader' as const, label: 'Sales' },
+  { type: 'subheader', label: 'Sales' },
   { label: 'History', href: '/dashboard/sales/history', icon: <ReceiptIcon /> },
   { label: 'Open Tabs', href: '/dashboard/sales/tabs', icon: <BookmarkIcon /> },
-  { type: 'subheader' as const, label: 'Reports' },
+  { type: 'subheader', label: 'Expenses' },
+  { label: 'Expenses', href: '/dashboard/expenses', icon: <MoneyOffIcon /> },
+  { type: 'subheader', label: 'Reports' },
   { label: 'Daily Report', href: '/dashboard/reports/daily', icon: <AssessmentIcon /> },
   { label: 'Payments', href: '/dashboard/reports/payments', icon: <PaymentsIcon /> },
-  { type: 'subheader' as const, label: 'Settings' },
+  { type: 'subheader', label: 'Settings' },
   { label: 'Branch', href: '/dashboard/settings/branch', icon: <StoreIcon /> },
   { label: 'Users', href: '/dashboard/settings/users', icon: <PeopleIcon /> },
+];
+
+const adminNavItems: NavItem[] = [
+  { type: 'subheader', label: 'Admin', adminOnly: true },
+  { label: 'Tenants', href: '/dashboard/admin', icon: <AdminPanelSettingsIcon />, adminOnly: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -62,6 +79,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace('/login');
     }
   }, [router]);
+
+  const isSuperAdmin = auth.user?.role === 'SuperAdmin';
+
+  const navItems = useMemo(() => {
+    if (isSuperAdmin) return [...baseNavItems, ...adminNavItems];
+    return baseNavItems;
+  }, [isSuperAdmin]);
 
   const handleLogout = () => {
     auth.logout();
@@ -79,6 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           if (item.type === 'subheader') {
             return <ListSubheader key={i} sx={{ lineHeight: '36px', mt: 1 }}>{item.label}</ListSubheader>;
           }
+
           return (
             <ListItemButton
               key={item.href}
@@ -87,7 +112,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               sx={{ borderRadius: 2, mx: 1 }}
             >
               <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} primaryTypographyProps={{ variant: 'body2', fontWeight: pathname === item.href ? 700 : 400 }} />
+              <ListItemText
+                primary={item.label}
+                primaryTypographyProps={{
+                  variant: 'body2',
+                  fontWeight: pathname === item.href ? 700 : 400,
+                }}
+              />
             </ListItemButton>
           );
         })}

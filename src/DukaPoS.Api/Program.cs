@@ -1,21 +1,29 @@
 using System.Text;
 using DukaPoS.Api.Middleware;
+using DukaPoS.Domain.Enumerations;
+using DukaPoS.Domain.Identity;
+using DukaPoS.Domain.Inventory;
+using DukaPoS.Domain.Sales;
+using DukaPoS.Domain.Tenancy;
+using DukaPoS.Handlers.Printing;
 using DukaPoS.Handlers.Sales;
 using DukaPoS.Infrastructure.Auth;
+using DukaPoS.Infrastructure.Hubs;
+using DukaPoS.Infrastructure.Mpesa;
 using DukaPoS.Infrastructure.Persistence;
+using DukaPoS.Infrastructure.Printing;
 using DukaPoS.Messages.Auth;
+using DukaPoS.Messages.Expenses;
 using DukaPoS.Messages.Inventory;
 using DukaPoS.Messages.Payments;
 using DukaPoS.Messages.Reporting;
 using DukaPoS.Messages.Sales;
 using DukaPoS.Messages.Terminal;
 using DukaPoS.Messages.Tenancy;
-using DukaPoS.Domain.Identity;
-using DukaPoS.Domain.Inventory;
-using DukaPoS.Domain.Sales;
-using DukaPoS.Domain.Tenancy;
+using Marten;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 using Wolverine;
 using Wolverine.Marten;
 
@@ -28,6 +36,10 @@ var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddScoped<TenantContext>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IPasswordService, PasswordService>();
+builder.Services.AddSingleton<IReceiptPrinter, ReceiptPrinter>();
+
+// ── SignalR ──
+builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -35,7 +47,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+        policy.AllowAnyMethod().AllowAnyHeader()
+              .SetIsOriginAllowed(_ => true)
+              .AllowCredentials());
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -52,7 +66,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         };
     });
+
 builder.Services.AddAuthorization();
+
+// ── Redis ──
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrEmpty(redisConnection))
+{
+    builder.Services.AddSingleton<IConnectionMultiplexer>(
+        ConnectionMultiplexer.Connect(redisConnection));
+}
+
+// ── M-Pesa ──
+builder.Services.Configure<MpesaConfig>(builder.Configuration.GetSection("Mpesa"));
+builder.Services.AddHttpClient<IMpesaService, MpesaService>();
 
 // ── Wolverine + Marten ──
 builder.Host.UseWolverine(opts =>
@@ -72,6 +99,9 @@ builder.Host.UseWolverine(opts =>
 
 var app = builder.Build();
 
+// ── Seed Super Admin ──
+await SeedSuperAdmin(app);
+
 // ── Middleware ──
 app.UseCors();
 app.UseSwagger();
@@ -79,6 +109,10 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<TenantResolutionMiddleware>();
+
+// ── SignalR Hubs ──
+app.MapHub<PosHub>("/hubs/pos");
+app.MapHub<StockHub>("/hubs/stock");
 
 // ══════════════════════════════════════════════════════════
 //  API ENDPOINTS
@@ -261,6 +295,22 @@ payments.MapPost("/mpesa/callback", async (MpesaCallbackEvent callback, IMessage
     return Results.Ok();
 }).AllowAnonymous();
 
+// ── Receipt ──
+var receipt = app.MapGroup("/api/receipt").RequireAuthorization();
+
+receipt.MapPost("/generate", async (GenerateReceiptCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<ReceiptResult>(command);
+        return Results.File(result.Data, "application/octet-stream", $"receipt-{result.SaleNumber}.bin");
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 // ── Inventory ──
 var inventory = app.MapGroup("/api/inventory").RequireAuthorization();
 
@@ -414,6 +464,64 @@ branch.MapPut("/", async (UpdateBranchCommand command, IMessageBus bus) =>
     }
 });
 
+// ── Expenses ──
+var expenses = app.MapGroup("/api/expenses").RequireAuthorization();
+
+expenses.MapGet("/", async (Guid branchId, string? from, string? to, string? category, int? page, int? pageSize, IMessageBus bus) =>
+{
+    var result = await bus.InvokeAsync<ExpensesResult>(new GetExpensesQuery(branchId, from, to, category, page ?? 1, pageSize ?? 20));
+    return Results.Ok(result);
+});
+
+expenses.MapPost("/", async (CreateExpenseCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<ExpenseDto>(command);
+        return Results.Created($"/api/expenses/{result.Id}", result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+expenses.MapPut("/", async (UpdateExpenseCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<ExpenseDto>(command);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+expenses.MapDelete("/{id:guid}", async (Guid id, IMessageBus bus) =>
+{
+    try
+    {
+        await bus.InvokeAsync(new DeleteExpenseCommand(id));
+        return Results.Ok(new { deleted = true });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+expenses.MapGet("/summary", async (Guid branchId, string? from, string? to, IMessageBus bus) =>
+{
+    var today = DateOnly.FromDateTime(DateTime.UtcNow);
+    var fromDate = from ?? today.AddDays(-30).ToString("yyyy-MM-dd");
+    var toDate = to ?? today.ToString("yyyy-MM-dd");
+    var result = await bus.InvokeAsync<ExpenseSummaryResult>(
+        new GetExpenseSummaryQuery(branchId, fromDate, toDate));
+    return Results.Ok(result);
+});
+
 // ── Reports ──
 var reports = app.MapGroup("/api/reports").RequireAuthorization();
 
@@ -437,4 +545,59 @@ reports.MapGet("/payment-breakdown", async (Guid branchId, DateOnly? from, DateO
     return Results.Ok(result);
 });
 
+// ── Admin ──
+var admin = app.MapGroup("/api/admin").RequireAuthorization();
+
+admin.MapGet("/tenants", async (IDocumentStore store) =>
+{
+    await using var session = store.LightweightSession();
+    var tenants = await session.Query<Tenant>().ToListAsync();
+    return Results.Ok(tenants);
+});
+
+admin.MapGet("/tenants/{tenantId:guid}/branches", async (Guid tenantId, IDocumentStore store) =>
+{
+    await using var session = store.LightweightSession();
+    var tenant = await session.LoadAsync<Tenant>(tenantId);
+    return tenant != null ? Results.Ok(tenant.Branches) : Results.NotFound();
+});
+
 app.Run();
+
+static async Task SeedSuperAdmin(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
+    var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
+
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var email = config["SuperAdmin:Email"] ?? "admin@dukapos.co.ke";
+    var password = config["SuperAdmin:DefaultPassword"] ?? "Admin@123";
+
+    await using var session = store.LightweightSession();
+
+    var existing = await session.Query<User>()
+        .FirstOrDefaultAsync(u => u.Email == email && u.Role == UserRole.SuperAdmin);
+
+    if (existing != null)
+    {
+        return;
+    }
+
+    var superAdmin = new User
+    {
+        Id = Guid.NewGuid(),
+        TenantId = "system",
+        FullName = "Super Admin",
+        Email = email,
+        PasswordHash = passwordService.Hash(password),
+        Role = UserRole.SuperAdmin,
+        IsActive = true,
+        BranchId = Guid.Empty,
+    };
+
+    session.Store(superAdmin);
+    await session.SaveChangesAsync();
+
+    app.Logger.LogInformation("Super admin account seeded: {Email}", email);
+}

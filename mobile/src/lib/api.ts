@@ -109,6 +109,17 @@ export const reportsApi = {
     api.get('/api/reports/payment-breakdown', { params: { branchId, from, to } }),
 };
 
+// ── Expenses ──
+export const expensesApi = {
+  list: (branchId: string, params?: { from?: string; to?: string; category?: string; page?: number; pageSize?: number }) =>
+    api.get('/api/expenses', { params: { branchId, page: 1, pageSize: 20, ...params } }),
+  create: (data: { branchId: string; category: string; description: string; amount: number; expenseDate: string; receiptUrl?: string; recordedBy: string; recordedByName: string }) =>
+    api.post('/api/expenses', data),
+  delete: (id: string) => api.delete(`/api/expenses/${id}`),
+  summary: (branchId: string, from: string, to: string) =>
+    api.get('/api/expenses/summary', { params: { branchId, from, to } }),
+};
+
 // ── User ──
 export const userApi = {
   changePin: (currentPin: string, newPin: string) =>

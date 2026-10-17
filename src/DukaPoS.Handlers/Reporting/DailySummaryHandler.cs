@@ -1,3 +1,5 @@
+using DukaPoS.Domain.Enumerations;
+using DukaPoS.Domain.Expenses;
 using DukaPoS.Domain.Payments;
 using DukaPoS.Domain.Sales;
 using DukaPoS.Messages.Reporting;
@@ -38,9 +40,13 @@ public static class DailySummaryHandler
 
         var averageBasket = completedSales.Count > 0 ? totalRevenue / completedSales.Count : 0;
 
+        var expenseTotal = await session.Query<Expense>()
+            .Where(e => e.BranchId == query.BranchId && e.Date == query.Date)
+            .SumAsync(e => e.Amount);
+
         return new DailySummaryResult(
             query.Date, completedSales.Count, totalRevenue, totalVat,
-            cashTotal, mpesaTotal, voidedCount, averageBasket
+            cashTotal, mpesaTotal, voidedCount, averageBasket, expenseTotal
         );
     }
 }

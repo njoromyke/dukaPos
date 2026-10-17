@@ -1,4 +1,7 @@
+using DukaPoS.Domain.Enumerations;
+
 namespace DukaPoS.Domain.Sales;
+
 public class Sale
 {
     public Guid Id { get; set; }
@@ -39,7 +42,6 @@ public class Sale
         item.Quantity = newQuantity; item.Recalculate(); Recalculate();
     }
 }
-public enum SaleStatus { Active, Parked, AwaitingPayment, Completed, Voided }
 public class SaleLineItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();

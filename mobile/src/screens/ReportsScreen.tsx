@@ -4,7 +4,7 @@ import {
   Text, Card, Button, Divider, ProgressBar, useTheme,
 } from 'react-native-paper';
 import { useAuthStore } from '../stores';
-import { reportsApi } from '../lib/api';
+import { reportsApi, expensesApi } from '../lib/api';
 
 interface DailySummary {
   totalSales: number;
@@ -25,6 +25,12 @@ interface PaymentBreakdown {
   total: number;
 }
 
+interface ExpenseSummary {
+  totalAmount: number;
+  count: number;
+  byCategory: { category: string; total: number; count: number }[];
+}
+
 export default function ReportsScreen({ navigation }: any) {
   const theme = useTheme();
   const auth = useAuthStore();
@@ -35,20 +41,23 @@ export default function ReportsScreen({ navigation }: any) {
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [payments, setPayments] = useState<PaymentBreakdown | null>(null);
+  const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
 
   const loadData = useCallback(async () => {
     try {
-      const [sumRes, topRes, payRes] = await Promise.all([
+      const [sumRes, topRes, payRes, expRes] = await Promise.all([
         reportsApi.getDailySummary(branchId, date),
         reportsApi.getTopProducts(branchId, date, date, 5),
         reportsApi.getPaymentBreakdown(branchId, date, date),
+        expensesApi.summary(branchId, date, date),
       ]);
       setSummary(sumRes.data);
       setTopProducts(topRes.data || []);
       setPayments(payRes.data);
+      setExpenseSummary(expRes.data);
     } catch {}
   }, [branchId, date]);
 
@@ -186,6 +195,39 @@ export default function ReportsScreen({ navigation }: any) {
           <Text variant="bodySmall" style={{ color: theme.colors.outline }}>No payments for this date</Text>
         )}
       </View>
+
+      <Divider style={{ marginHorizontal: 16 }} />
+
+      {/* Expenses summary */}
+      <View style={styles.section}>
+        <Text variant="titleSmall" style={{ fontWeight: '700', marginBottom: 12 }}>
+          Expenses
+        </Text>
+        {expenseSummary && expenseSummary.count > 0 ? (
+          <>
+            <View style={styles.paymentRow}>
+              <Text variant="bodyMedium">Total Expenses</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: '700', color: '#E65100' }}>
+                {formatKES(expenseSummary.totalAmount)}
+              </Text>
+            </View>
+            <Text variant="labelSmall" style={{ color: theme.colors.outline, marginBottom: 8 }}>
+              {expenseSummary.count} transaction{expenseSummary.count !== 1 ? 's' : ''}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {expenseSummary.byCategory.map((cat) => (
+                <View key={cat.category} style={styles.expenseChip}>
+                  <Text variant="labelSmall" style={{ fontWeight: '600' }}>
+                    {cat.category}: {formatKES(cat.total)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <Text variant="bodySmall" style={{ color: theme.colors.outline }}>No expenses for this date</Text>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -205,4 +247,7 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 16, paddingVertical: 16 },
   productRow: { marginBottom: 14 },
   paymentRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  expenseChip: {
+    backgroundColor: '#FFF3E0', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4,
+  },
 });
