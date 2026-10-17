@@ -1,6 +1,6 @@
 export interface UserInfo {
   id: string;
-  name: string;
+  fullName: string;
   email: string;
   role: string;
   branchId: string;

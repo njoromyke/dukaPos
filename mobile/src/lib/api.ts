@@ -89,7 +89,7 @@ export const inventoryApi = {
   updateProduct: (data: any) => api.put('/api/inventory/products', data),
   adjustStock: (data: any) => api.post('/api/inventory/stock/adjust', data),
   getStockLevels: (branchId: string) =>
-    api.get('/api/inventory/stock', { params: { branchId } }),
+    api.get('/api/inventory/stock/levels', { params: { branchId } }),
 };
 
 // ── Terminal ──

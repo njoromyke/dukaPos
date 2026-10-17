@@ -40,7 +40,7 @@ export default function StockPage() {
 
   const load = useCallback(async () => {
     if (!auth.user?.branchId) return;
-    try { const r = await inventoryApi.getProducts(auth.user.branchId, { pageSize: 200 }); setProducts(Array.isArray(r.data) ? r.data : r.data.items || []); }
+    try { const r = await inventoryApi.getProducts(auth.user.branchId, { pageSize: 200 }); setProducts(Array.isArray(r.data) ? r.data : r.data.products || []); }
     catch { /* */ }
   }, [auth.user?.branchId]);
 

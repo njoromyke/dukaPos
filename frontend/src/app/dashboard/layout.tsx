@@ -105,7 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login');
   };
 
-  const initials = (auth.user?.name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const initials = (auth.user?.fullName || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   const isActive = (href: string) => pathname === href || (href !== '/dashboard' && pathname.startsWith(href + '/'));
 
@@ -131,7 +131,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {auth.user?.name || 'User'}
+            {auth.user?.fullName || 'User'}
           </Typography>
           <Chip
             label={isSuperAdmin ? 'Super Admin' : auth.user?.role || 'User'}

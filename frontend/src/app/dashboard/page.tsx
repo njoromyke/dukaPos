@@ -82,7 +82,7 @@ export default function DashboardPage() {
       <Box sx={{ mb: 4 }}>
         <Typography variant="h5" sx={{ fontWeight: 800, color: '#0F172A' }}>Dashboard</Typography>
         <Typography variant="body2" sx={{ color: '#64748B', mt: 0.5 }}>
-          Today&apos;s summary for {auth.user?.name || 'your branch'}
+          Today&apos;s summary for {auth.user?.fullName || 'your branch'}
         </Typography>
       </Box>
 

@@ -58,7 +58,7 @@ export default function ProductsPage() {
     try {
       const res = await inventoryApi.getProducts(auth.user.branchId, { search: search || undefined, categoryId: catFilter || undefined, page: page + 1, pageSize: 20 });
       const d = res.data;
-      const items = Array.isArray(d) ? d : Array.isArray(d?.items) ? d.items : [];
+      const items = Array.isArray(d) ? d : Array.isArray(d?.products) ? d.products : [];
       setProducts(items);
       setTotal(d?.totalCount ?? items.length);
     } catch { /* */ }

@@ -90,7 +90,7 @@ export const usersApi = {
   unlock: (userId: string, unlockedBy: string) =>
     api.post(`/api/users/${userId}/unlock`, { unlockedBy }),
   changePassword: (userId: string, currentPassword: string, newPassword: string) =>
-    api.post('/api/users/change-password', { userId, currentPassword, newPassword }),
+    api.post('/api/auth/change-password', { userId, currentPassword, newPassword }),
 };
 
 export const branchApi = {
@@ -126,8 +126,8 @@ export const expensesApi = {
     api.get('/api/expenses/summary', { params: { branchId, from, to } }),
   approve: (id: string, approvedBy: string, approvedByName: string) =>
     api.post(`/api/expenses/${id}/approve`, { approvedBy, approvedByName }),
-  reject: (id: string, rejectedBy: string, reason: string) =>
-    api.post(`/api/expenses/${id}/reject`, { rejectedBy, reason }),
+  reject: (id: string, rejectedBy: string, rejectedByName: string, reason: string) =>
+    api.post(`/api/expenses/${id}/reject`, { rejectedBy, rejectedByName, reason }),
 };
 
 export const auditApi = {

@@ -24,7 +24,7 @@ export default function PosPage() {
 
   const branchId = auth.user?.branchId || '';
   const cashierId = auth.user?.id || '';
-  const cashierName = auth.user?.name || '';
+  const cashierName = auth.user?.fullName || '';
 
   const loadTabs = useCallback(async () => {
     if (!branchId) return;

@@ -28,7 +28,8 @@ export default function PinEntryPage() {
       setLoading(true);
       try {
         const res = await authApi.pinLogin(newPin);
-        auth.login(res.data.token, res.data.user, auth.tenantId || '');
+        const u = res.data.user;
+        auth.login(res.data.token, { ...u, fullName: u.fullName || u.name }, auth.tenantId || '');
         router.push('/pos');
       } catch {
         setError('Invalid PIN');
@@ -44,9 +45,9 @@ export default function PinEntryPage() {
   return (
     <Paper elevation={0} sx={{ p: 5, width: '100%', maxWidth: 360, textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
       <Avatar sx={{ width: 72, height: 72, mx: 'auto', mb: 2, bgcolor: 'primary.main', fontSize: 28 }}>
-        {auth.user?.name?.[0] || '?'}
+        {auth.user?.fullName?.[0] || '?'}
       </Avatar>
-      <Typography variant="h6" gutterBottom>{auth.user?.name || 'Cashier'}</Typography>
+      <Typography variant="h6" gutterBottom>{auth.user?.fullName || 'Cashier'}</Typography>
       <Typography variant="body2" color="text.secondary" mb={3}>Enter your PIN</Typography>
 
       <Box display="flex" justifyContent="center" gap={2} mb={2}>

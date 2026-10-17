@@ -154,7 +154,7 @@ export default function ExpensesPage() {
         description: form.description,
         amount,
         recordedBy: auth.user?.id || '',
-        recordedByName: auth.user?.name || '',
+        recordedByName: auth.user?.fullName || '',
         expenseDate: form.expenseDate,
       });
 
@@ -186,7 +186,7 @@ export default function ExpensesPage() {
 
   const handleApprove = async (id: string) => {
     try {
-      await expensesApi.approve(id, auth.user?.id || '', auth.user?.name || '');
+      await expensesApi.approve(id, auth.user?.id || '', auth.user?.fullName || '');
       setSnack({ message: 'Expense approved', severity: 'success' });
       loadExpenses();
     } catch {
@@ -198,7 +198,7 @@ export default function ExpensesPage() {
     const reason = prompt('Rejection reason:');
     if (!reason) return;
     try {
-      await expensesApi.reject(id, auth.user?.id || '', reason);
+      await expensesApi.reject(id, auth.user?.id || '', auth.user?.fullName || '', reason);
       setSnack({ message: 'Expense rejected', severity: 'success' });
       loadExpenses();
     } catch {

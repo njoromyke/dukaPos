@@ -39,10 +39,15 @@ export default function LoginPage() {
     setError('');
     try {
       const res = await authApi.login(email, password, tenantSlug);
-      const { token, user, tenantId } = res.data;
-      auth.login(token, user, tenantId);
-      const dest = user.role === 'SuperAdmin' ? '/dashboard/admin' : '/pos';
-      router.push(dest);
+      const { token, user, tenantId, mustChangePassword } = res.data;
+      const userInfo = { ...user, fullName: user.fullName || user.name };
+      auth.login(token, userInfo, tenantId);
+      if (mustChangePassword) {
+        router.push('/change-password');
+      } else {
+        const dest = user.role === 'SuperAdmin' ? '/dashboard/admin' : '/pos';
+        router.push(dest);
+      }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg || 'Invalid credentials');
