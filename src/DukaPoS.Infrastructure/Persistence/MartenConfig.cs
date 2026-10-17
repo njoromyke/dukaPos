@@ -1,6 +1,5 @@
 using DukaPoS.Domain;
 using DukaPoS.Domain.Expenses;
-using DukaPoS.Domain;
 using DukaPoS.Domain.Fiscal;
 using DukaPoS.Domain.Identity;
 using DukaPoS.Domain.Inventory;

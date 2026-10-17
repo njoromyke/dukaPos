@@ -1,8 +1,6 @@
 using System.Text;
 using DukaPoS.Api.Middleware;
 using DukaPoS.Domain;
-using DukaPoS.Domain.Inventory;
-using DukaPoS.Domain.Sales;
 using DukaPoS.Domain.Identity;
 using DukaPoS.Domain.Inventory;
 using DukaPoS.Domain.Sales;
@@ -31,11 +29,11 @@ using Wolverine.Marten;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                       ?? throw new InvalidOperationException("DefaultConnection is required.");
+var connectionString = builder.Configuration.GetConnectionString("Postgres")
+                       ?? throw new InvalidOperationException("ConnectionStrings:Postgres is required.");
 
-var jwtSecret = builder.Configuration["Jwt:Secret"]
-                ?? throw new InvalidOperationException("Jwt:Secret is required.");
+var jwtSecret = builder.Configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException("Jwt:Key is required.");
 
 // ── Services ──
 builder.Services.AddScoped<TenantContext>();
