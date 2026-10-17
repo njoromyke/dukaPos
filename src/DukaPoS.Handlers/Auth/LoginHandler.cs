@@ -1,4 +1,4 @@
-using DukaPoS.Domain.Enumerations;
+using DukaPoS.Domain;
 using DukaPoS.Domain.Identity;
 using DukaPoS.Domain.Tenancy;
 using DukaPoS.Infrastructure.Auth;

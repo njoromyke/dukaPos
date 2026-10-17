@@ -1,4 +1,4 @@
-using DukaPoS.Domain.Enumerations;
+using DukaPoS.Domain;
 using DukaPoS.Domain.Inventory;
 using DukaPoS.Domain.Sales;
 using DukaPoS.Messages.Inventory;

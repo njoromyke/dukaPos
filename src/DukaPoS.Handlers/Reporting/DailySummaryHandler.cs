@@ -1,4 +1,4 @@
-using DukaPoS.Domain.Enumerations;
+using DukaPoS.Domain;
 using DukaPoS.Domain.Expenses;
 using DukaPoS.Domain.Payments;
 using DukaPoS.Domain.Sales;

@@ -1,4 +1,4 @@
-namespace DukaPoS.Domain.Enumerations;
+namespace DukaPoS.Domain;
 
 public enum UserRole
 {

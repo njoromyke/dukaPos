@@ -1,5 +1,3 @@
-using DukaPoS.Domain.Enumerations;
-
 namespace DukaPoS.Domain.Inventory;
 
 public class Product

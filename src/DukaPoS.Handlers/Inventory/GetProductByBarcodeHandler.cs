@@ -1,4 +1,3 @@
-using DukaPoS.Domain.Enumerations;
 using DukaPoS.Domain.Inventory;
 using DukaPoS.Messages.Inventory;
 using Marten;

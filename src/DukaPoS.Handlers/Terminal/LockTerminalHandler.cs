@@ -1,3 +1,4 @@
+using DukaPoS.Domain;
 using DukaPoS.Domain.Identity;
 using DukaPoS.Messages.Terminal;
 using Marten;
