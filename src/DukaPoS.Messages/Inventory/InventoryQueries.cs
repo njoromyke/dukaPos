@@ -6,3 +6,5 @@ public record ProductDto(Guid Id, string Name, string Sku, string? Barcode, stri
 public record GetProductByBarcodeQuery(string Barcode, Guid BranchId);
 public record GetCategoriesQuery();
 public record GetStockLevelsQuery(Guid BranchId, bool LowStockOnly = false, int Page = 1, int PageSize = 50);
+public record StockLevelsResult(List<StockLevelDto> StockLevels, int TotalCount, int Page, int PageSize);
+public record StockLevelDto(Guid Id, Guid ProductId, string ProductName, string Sku, string Unit, decimal Quantity, decimal ReorderLevel, bool IsLowStock, DateTimeOffset UpdatedAt);

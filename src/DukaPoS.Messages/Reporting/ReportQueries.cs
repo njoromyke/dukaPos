@@ -5,3 +5,4 @@ public record DailySummaryResult(DateOnly Date, int TotalSales, decimal TotalRev
 public record GetPaymentBreakdownQuery(Guid BranchId, DateOnly From, DateOnly To);
 public record GetTopProductsQuery(Guid BranchId, DateOnly From, DateOnly To, int Top = 10);
 public record TopProductDto(Guid ProductId, string ProductName, decimal QuantitySold, decimal Revenue);
+public record PaymentBreakdownDto(string Method, int TransactionCount, decimal Total, decimal SharePercent);

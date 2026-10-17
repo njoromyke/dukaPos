@@ -9,8 +9,11 @@ using DukaPoS.Messages.Payments;
 using DukaPoS.Messages.Reporting;
 using DukaPoS.Messages.Sales;
 using DukaPoS.Messages.Terminal;
+using DukaPoS.Messages.Tenancy;
+using DukaPoS.Domain.Identity;
 using DukaPoS.Domain.Inventory;
 using DukaPoS.Domain.Sales;
+using DukaPoS.Domain.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Wolverine;
@@ -305,6 +308,19 @@ inventory.MapPost("/stock/adjust", async (AdjustStockCommand command, IMessageBu
     return Results.Ok(new { adjusted = true, lowStockAlert = result != null });
 });
 
+inventory.MapGet("/stock/levels", async (Guid branchId, bool? lowStockOnly, int? page, int? pageSize, IMessageBus bus) =>
+{
+    var query = new GetStockLevelsQuery(branchId, lowStockOnly ?? false, page ?? 1, pageSize ?? 50);
+    var result = await bus.InvokeAsync<StockLevelsResult>(query);
+    return Results.Ok(result);
+});
+
+inventory.MapPost("/categories", async (CreateCategoryCommand command, IMessageBus bus) =>
+{
+    var result = await bus.InvokeAsync<Category>(command);
+    return Results.Created($"/api/inventory/categories/{result.Id}", result);
+});
+
 // ── Terminal ──
 var terminal = app.MapGroup("/api/terminal").RequireAuthorization();
 
@@ -334,18 +350,90 @@ terminal.MapPost("/unlock/pin", async (UnlockTerminalWithPinCommand command, IMe
     }
 });
 
-// ── Reports ──
-var reports = app.MapGroup("/api/reports").RequireAuthorization();
+// ── Users ──
+var users = app.MapGroup("/api/users").RequireAuthorization();
 
-reports.MapGet("/daily", async (Guid branchId, DateOnly date, IMessageBus bus) =>
+users.MapGet("/", async (Guid? branchId, IMessageBus bus) =>
 {
-    var result = await bus.InvokeAsync<DailySummaryResult>(new GetDailySummaryQuery(branchId, date));
+    var result = await bus.InvokeAsync<IReadOnlyList<UserDto>>(new GetUsersQuery(branchId));
     return Results.Ok(result);
 });
 
-reports.MapGet("/top-products", async (Guid branchId, DateOnly from, DateOnly to, int? top, IMessageBus bus) =>
+users.MapPost("/", async (CreateUserCommand command, IMessageBus bus) =>
 {
-    var result = await bus.InvokeAsync<IReadOnlyList<TopProductDto>>(new GetTopProductsQuery(branchId, from, to, top ?? 10));
+    try
+    {
+        var result = await bus.InvokeAsync<UserDto>(command);
+        return Results.Created($"/api/users/{result.Id}", result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+users.MapPut("/", async (UpdateUserCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<UserDto>(command);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+// ── Branch ──
+var branch = app.MapGroup("/api/branch").RequireAuthorization();
+
+branch.MapGet("/{branchId:guid}", async (Guid branchId, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<BranchDto>(new GetBranchQuery(branchId));
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { message = ex.Message });
+    }
+});
+
+branch.MapPut("/", async (UpdateBranchCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<BranchDto>(command);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+// ── Reports ──
+var reports = app.MapGroup("/api/reports").RequireAuthorization();
+
+reports.MapGet("/daily-summary", async (Guid branchId, DateOnly? date, IMessageBus bus) =>
+{
+    var result = await bus.InvokeAsync<DailySummaryResult>(new GetDailySummaryQuery(branchId, date ?? DateOnly.FromDateTime(DateTime.UtcNow)));
+    return Results.Ok(result);
+});
+
+reports.MapGet("/top-products", async (Guid branchId, DateOnly? from, DateOnly? to, int? top, IMessageBus bus) =>
+{
+    var today = DateOnly.FromDateTime(DateTime.UtcNow);
+    var result = await bus.InvokeAsync<IReadOnlyList<TopProductDto>>(new GetTopProductsQuery(branchId, from ?? today.AddDays(-30), to ?? today, top ?? 10));
+    return Results.Ok(result);
+});
+
+reports.MapGet("/payment-breakdown", async (Guid branchId, DateOnly? from, DateOnly? to, IMessageBus bus) =>
+{
+    var today = DateOnly.FromDateTime(DateTime.UtcNow);
+    var result = await bus.InvokeAsync<IReadOnlyList<PaymentBreakdownDto>>(new GetPaymentBreakdownQuery(branchId, from ?? today.AddDays(-30), to ?? today));
     return Results.Ok(result);
 });
 

@@ -4,6 +4,7 @@ export interface UserInfo {
   email: string;
   role: string;
   branchId: string;
+  branchName?: string;
 }
 
 export function saveAuth(token: string, user: UserInfo, tenantId: string) {

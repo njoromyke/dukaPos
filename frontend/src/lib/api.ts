@@ -77,6 +77,20 @@ export const inventoryApi = {
     api.post('/api/inventory/stock/adjust', data),
 };
 
+export const usersApi = {
+  list: (branchId?: string) => api.get('/api/users', { params: { branchId } }),
+  create: (data: { fullName: string; email: string; password: string; pin?: string; role: string; branchId: string }) =>
+    api.post('/api/users', data),
+  update: (data: { id: string; fullName: string; email: string; role: string; branchId: string; isActive: boolean }) =>
+    api.put('/api/users', data),
+};
+
+export const branchApi = {
+  get: (branchId: string) => api.get(`/api/branch/${branchId}`),
+  update: (data: { id: string; name: string; address: string; phone: string }) =>
+    api.put('/api/branch', data),
+};
+
 export const terminalApi = {
   lock: (sessionId: string) => api.post('/api/terminal/lock', { sessionId }),
   unlockWithPin: (sessionId: string, pin: string) =>
