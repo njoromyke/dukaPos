@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import LockIcon from '@mui/icons-material/Lock';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePosStore } from '@/stores/pos-store';
 import { salesApi } from '@/lib/api';
@@ -23,7 +24,7 @@ export default function PosPage() {
 
   const branchId = auth.user?.branchId || '';
   const cashierId = auth.user?.id || '';
-  const cashierName = auth.user?.name || '';
+  const cashierName = auth.user?.fullName || '';
 
   const loadTabs = useCallback(async () => {
     if (!branchId) return;
@@ -43,6 +44,10 @@ export default function PosPage() {
   };
 
   const addProduct = async (product: any) => {
+    if (product.stockQuantity <= 0) {
+      setSnack({ message: `${product.name} is out of stock`, severity: 'error' });
+      return;
+    }
     try {
       const saleId = await ensureSaleOpen();
       const res = await salesApi.addItem(saleId, {
@@ -117,6 +122,9 @@ export default function PosPage() {
           <Chip label={auth.user?.branchName || 'Branch'} size="small" variant="outlined" />
           <Chip label={cashierName} size="small" />
           <Box sx={{ flex: 1 }} />
+          <IconButton onClick={() => window.location.reload()} title="Refresh">
+            <RefreshIcon />
+          </IconButton>
           <IconButton onClick={() => setTabsOpen(true)}>
             <Badge badgeContent={pos.openTabs.length} color="primary">
               <BookmarkIcon />

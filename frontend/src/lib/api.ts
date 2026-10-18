@@ -73,16 +73,24 @@ export const inventoryApi = {
   getCategories: () => api.get('/api/inventory/categories'),
   createProduct: (data: Record<string, unknown>) => api.post('/api/inventory/products', data),
   updateProduct: (data: Record<string, unknown>) => api.put('/api/inventory/products', data),
+  updateCategory: (data: { id: string; name: string; parentId?: string | null; sortOrder: number }) =>
+    api.put('/api/inventory/categories', data),
   adjustStock: (data: { productId: string; branchId: string; quantityChange: number; reason: string; notes?: string; adjustedBy: string }) =>
     api.post('/api/inventory/stock/adjust', data),
 };
 
 export const usersApi = {
   list: (branchId?: string) => api.get('/api/users', { params: { branchId } }),
-  create: (data: { fullName: string; email: string; password: string; pin?: string; role: string; branchId: string }) =>
+  create: (data: { fullName: string; email: string; password: string; pin?: string; role: string; branchId: string; tenantId?: string }) =>
     api.post('/api/users', data),
   update: (data: { id: string; fullName: string; email: string; role: string; branchId: string; isActive: boolean }) =>
     api.put('/api/users', data),
+  lock: (userId: string, lockedBy: string) =>
+    api.post(`/api/users/${userId}/lock`, { lockedBy }),
+  unlock: (userId: string, unlockedBy: string) =>
+    api.post(`/api/users/${userId}/unlock`, { unlockedBy }),
+  changePassword: (userId: string, currentPassword: string, newPassword: string) =>
+    api.post('/api/auth/change-password', { userId, currentPassword, newPassword }),
 };
 
 export const branchApi = {
@@ -116,6 +124,40 @@ export const expensesApi = {
   delete: (id: string) => api.delete(`/api/expenses/${id}`),
   summary: (branchId: string, from: string, to: string) =>
     api.get('/api/expenses/summary', { params: { branchId, from, to } }),
+  approve: (id: string, approvedBy: string, approvedByName: string) =>
+    api.post(`/api/expenses/${id}/approve`, { approvedBy, approvedByName }),
+  reject: (id: string, rejectedBy: string, rejectedByName: string, reason: string) =>
+    api.post(`/api/expenses/${id}/reject`, { rejectedBy, rejectedByName, reason }),
+};
+
+export const auditApi = {
+  list: (params?: { userId?: string; action?: string; entityType?: string; from?: string; to?: string; page?: number; pageSize?: number }) =>
+    api.get('/api/audit/logs', { params: { page: 1, pageSize: 50, ...params } }),
+};
+
+export const tenantSettingsApi = {
+  get: (tenantId: string) => api.get(`/api/tenant-settings/${tenantId}`),
+  update: (data: Record<string, unknown>) => api.put('/api/tenant-settings', data),
+};
+
+export const blobApi = {
+  upload: (file: File, category: string, referenceId?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('category', category);
+    if (referenceId) formData.append('referenceId', referenceId);
+    return api.post('/api/blobs/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  getUrl: (id: string) => `${api.defaults.baseURL}/api/blobs/${id}`,
+  getByReference: (referenceId: string, category?: string) =>
+    api.get(`/api/blobs/by-reference/${referenceId}`, { params: { category } }),
+};
+
+export const receiptApi = {
+  generate: (data: { saleId: string; businessName: string; branchName: string; branchAddress?: string; paymentMethod: string; amountPaid: number; change: number; mpesaRef?: string }) =>
+    api.post('/api/receipt/generate', data),
+  getBySale: (saleId: string) =>
+    api.get(`/api/receipt/by-sale/${saleId}`, { responseType: 'blob' }),
 };
 
 export const adminApi = {

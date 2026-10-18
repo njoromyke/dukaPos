@@ -13,6 +13,8 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/auth-store';
+import IconButton from '@mui/material/IconButton';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { reportsApi } from '@/lib/api';
 
 const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
@@ -24,14 +26,17 @@ export default function DailyReportPage() {
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [summary, setSummary] = useState<{ totalSales: number; totalRevenue: number; averageBasket: number; cashTotal: number; mpesaTotal: number } | null>(null);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => { auth.hydrate(); }, []);
 
-  useEffect(() => {
+  const load = () => {
     if (!auth.user?.branchId) return;
     reportsApi.dailySummary(auth.user.branchId, date).then((r) => setSummary(r.data)).catch(() => {});
     reportsApi.topProducts(auth.user.branchId, date, date, 10).then((r) => setTopProducts(r.data)).catch(() => {});
-  }, [auth.user?.branchId, date]);
+  };
+
+  useEffect(() => { load(); }, [auth.user?.branchId, date, refreshKey]);
 
   const cashPct = summary && summary.totalRevenue > 0 ? (summary.cashTotal / summary.totalRevenue) * 100 : 0;
   const mpesaPct = summary && summary.totalRevenue > 0 ? (summary.mpesaTotal / summary.totalRevenue) * 100 : 0;
@@ -40,7 +45,10 @@ export default function DailyReportPage() {
     <Box>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
         <Typography variant="h5">Daily Report</Typography>
-        <TextField type="date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <Box display="flex" gap={1} alignItems="center">
+          <IconButton onClick={() => setRefreshKey((k) => k + 1)} title="Refresh"><RefreshIcon /></IconButton>
+          <TextField type="date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        </Box>
       </Box>
 
       {summary && (

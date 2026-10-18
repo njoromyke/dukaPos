@@ -21,6 +21,7 @@ public static class CreateUserHandler
         var user = new User
         {
             Id = Guid.NewGuid(),
+            TenantId = command.TenantId ?? session.TenantId,
             FullName = command.FullName,
             Email = command.Email,
             PasswordHash = passwordService.Hash(command.Password),
@@ -31,7 +32,7 @@ public static class CreateUserHandler
 
         session.Store(user);
 
-        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, user.IsActive, user.CreatedAt);
+        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt);
     }
 }
 
@@ -50,7 +51,66 @@ public static class UpdateUserHandler
 
         session.Store(user);
 
-        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, user.IsActive, user.CreatedAt);
+        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt);
+    }
+}
+
+public static class LockUserHandler
+{
+    public static async Task<UserDto> Handle(LockUserCommand command, IDocumentSession session)
+    {
+        var user = await session.LoadAsync<User>(command.UserId)
+            ?? throw new InvalidOperationException("User not found");
+
+        user.IsLocked = true;
+        user.LockedAt = DateTimeOffset.UtcNow;
+
+        session.Store(user);
+        await session.SaveChangesAsync();
+
+        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(),
+            user.BranchId, user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt);
+    }
+}
+
+public static class UnlockUserHandler
+{
+    public static async Task<UserDto> Handle(UnlockUserCommand command, IDocumentSession session)
+    {
+        var user = await session.LoadAsync<User>(command.UserId)
+            ?? throw new InvalidOperationException("User not found");
+
+        user.IsLocked = false;
+        user.LockedAt = null;
+        user.FailedLoginAttempts = 0;
+        user.LockoutEnd = null;
+
+        session.Store(user);
+        await session.SaveChangesAsync();
+
+        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(),
+            user.BranchId, user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt);
+    }
+}
+
+public static class ChangePasswordHandler
+{
+    public static async Task Handle(
+        ChangePasswordCommand command,
+        IDocumentSession session,
+        IPasswordService passwordService)
+    {
+        var user = await session.LoadAsync<User>(command.UserId)
+            ?? throw new InvalidOperationException("User not found");
+
+        if (!passwordService.Verify(command.CurrentPassword, user.PasswordHash))
+            throw new InvalidOperationException("Current password is incorrect");
+
+        user.PasswordHash = passwordService.Hash(command.NewPassword);
+        user.MustChangePassword = false;
+
+        session.Store(user);
+        await session.SaveChangesAsync();
     }
 }
 
@@ -68,7 +128,7 @@ public static class GetUsersHandler
             .ToListAsync();
 
         return users.Select(u => new UserDto(
-            u.Id, u.FullName, u.Email, u.Role.ToString(), u.BranchId, u.IsActive, u.CreatedAt
+            u.Id, u.FullName, u.Email, u.Role.ToString(), u.BranchId, u.IsActive, u.IsLocked, u.MustChangePassword, u.CreatedAt
         )).ToList();
     }
 }

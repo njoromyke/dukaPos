@@ -33,14 +33,37 @@ public static class LoginHandler
             ?? throw new InvalidOperationException("Invalid credentials");
 
         if (!user.IsActive)
-        {
             throw new InvalidOperationException("Account is deactivated");
+
+        if (user.IsLocked)
+            throw new InvalidOperationException("Account is locked. Contact your administrator.");
+
+        if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow)
+            throw new InvalidOperationException($"Account is temporarily locked. Try again after {user.LockoutEnd.Value:HH:mm}.");
+
+        if (user.LockoutEnd.HasValue && user.LockoutEnd <= DateTimeOffset.UtcNow)
+        {
+            user.LockoutEnd = null;
+            user.FailedLoginAttempts = 0;
         }
 
         if (!passwordService.Verify(command.Password, user.PasswordHash))
         {
+            user.FailedLoginAttempts++;
+            if (user.FailedLoginAttempts >= 5)
+            {
+                user.LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(30);
+            }
+            session.Store(user);
+            await session.SaveChangesAsync();
             throw new InvalidOperationException("Invalid credentials");
         }
+
+        user.FailedLoginAttempts = 0;
+        user.LockoutEnd = null;
+        user.LastLoginAt = DateTimeOffset.UtcNow;
+        session.Store(user);
+        await session.SaveChangesAsync();
 
         var branch = tenant.Branches.FirstOrDefault(b => b.Id == user.BranchId);
         var branchName = branch?.Name ?? "Default";
@@ -50,7 +73,7 @@ public static class LoginHandler
 
         var userInfo = new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, branchName);
 
-        return new LoginResult(token, refreshToken, userInfo, tenant.Id.ToString());
+        return new LoginResult(token, refreshToken, userInfo, tenant.Id.ToString(), user.MustChangePassword);
     }
 
     private static async Task<LoginResult> HandleSuperAdminLogin(

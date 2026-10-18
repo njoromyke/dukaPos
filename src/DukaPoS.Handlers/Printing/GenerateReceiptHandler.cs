@@ -1,4 +1,5 @@
 using DukaPoS.Domain.Sales;
+using DukaPoS.Domain.Storage;
 using DukaPoS.Infrastructure.Printing;
 using Marten;
 
@@ -6,7 +7,7 @@ namespace DukaPoS.Handlers.Printing;
 
 public record GenerateReceiptCommand(Guid SaleId, string BusinessName, string BranchName, string? BranchAddress, string PaymentMethod, decimal AmountPaid, decimal Change, string? MpesaRef);
 
-public record ReceiptResult(byte[] Data, string SaleNumber);
+public record ReceiptResult(byte[] Data, string SaleNumber, Guid BlobId);
 
 public static class GenerateReceiptHandler
 {
@@ -44,6 +45,21 @@ public static class GenerateReceiptHandler
         };
 
         var bytes = printer.GenerateReceipt(receiptData);
-        return new ReceiptResult(bytes, sale.SaleNumber);
+
+        var blob = new BlobEntry
+        {
+            Id = Guid.NewGuid(),
+            TenantId = session.TenantId,
+            FileName = $"receipt-{sale.SaleNumber}.bin",
+            ContentType = "application/octet-stream",
+            Size = bytes.Length,
+            Data = bytes,
+            Category = "receipt",
+            ReferenceId = sale.Id,
+        };
+        session.Store(blob);
+        await session.SaveChangesAsync();
+
+        return new ReceiptResult(bytes, sale.SaleNumber, blob.Id);
     }
 }

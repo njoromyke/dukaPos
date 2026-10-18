@@ -27,6 +27,7 @@ public static class UpdateExpenseHandler
         return new ExpenseDto(
             expense.Id, expense.BranchId, expense.Category.ToString(),
             expense.Description, expense.Amount, expense.Date,
-            expense.ReceiptUrl, expense.RecordedByName, expense.CreatedAt);
+            expense.ReceiptUrl, expense.RecordedByName, expense.Status.ToString(),
+            expense.ApprovedByName, expense.ApprovedAt, expense.RejectionReason, expense.CreatedAt);
     }
 }

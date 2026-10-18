@@ -87,11 +87,13 @@ export interface Product {
   vatRate: number;
   isWeighed: boolean;
   stockQuantity: number;
+  imageUrl?: string;
 }
 
 export interface Category {
   id: string;
   name: string;
+  parentId: string | null;
 }
 
 interface ProductState {

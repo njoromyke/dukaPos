@@ -13,6 +13,8 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/auth-store';
+import IconButton from '@mui/material/IconButton';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { reportsApi } from '@/lib/api';
 
 const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
@@ -24,19 +26,23 @@ export default function PaymentsReportPage() {
   const [from, setFrom] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
   const [to, setTo] = useState(dayjs().format('YYYY-MM-DD'));
   const [data, setData] = useState<Breakdown[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => { auth.hydrate(); }, []);
 
   useEffect(() => {
     if (!auth.user?.branchId) return;
     reportsApi.paymentBreakdown(auth.user.branchId, from, to).then((r) => setData(Array.isArray(r.data) ? r.data : [])).catch(() => {});
-  }, [auth.user?.branchId, from, to]);
+  }, [auth.user?.branchId, from, to, refreshKey]);
 
   const grandTotal = data.reduce((s, d) => s + d.total, 0);
 
   return (
     <Box>
-      <Typography variant="h5" mb={3}>Payment Report</Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+        <Typography variant="h5">Payment Report</Typography>
+        <IconButton onClick={() => setRefreshKey((k) => k + 1)} title="Refresh"><RefreshIcon /></IconButton>
+      </Box>
       <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <TextField label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />

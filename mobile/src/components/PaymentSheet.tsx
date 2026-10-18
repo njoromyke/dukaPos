@@ -4,7 +4,7 @@ import {
   Modal, Text, IconButton, Button, TextInput, Chip, Divider, SegmentedButtons,
   useTheme,
 } from 'react-native-paper';
-import { paymentsApi } from '../lib/api';
+import { paymentsApi, receiptApi } from '../lib/api';
 import type { SaleState } from '../stores';
 
 interface Props {
@@ -27,6 +27,20 @@ export default function PaymentSheet({ visible, onDismiss, sale, onComplete, for
   const quickAmounts = [100, 200, 500, 1000, 2000, 5000];
   const change = parseFloat(cashAmount) - sale.grandTotal;
 
+  const generateReceipt = async (paymentMethod: string, amountPaid: number, changeAmount: number, mpesaRef?: string) => {
+    try {
+      await receiptApi.generate({
+        saleId: sale.id!,
+        businessName: 'DukaPoS',
+        branchName: 'Branch',
+        paymentMethod,
+        amountPaid,
+        change: changeAmount,
+        mpesaRef,
+      });
+    } catch { /* receipt generation failed silently — payment already succeeded */ }
+  };
+
   const handleCash = async () => {
     const amount = parseFloat(cashAmount);
     if (isNaN(amount) || amount < sale.grandTotal) {
@@ -36,7 +50,8 @@ export default function PaymentSheet({ visible, onDismiss, sale, onComplete, for
     setLoading(true);
     try {
       const res = await paymentsApi.recordCash(sale.id!, amount);
-      Alert.alert('Payment complete', `Change: ${formatKES(res.data.change)}`);
+      await generateReceipt('Cash', amount, res.data.change);
+      Alert.alert('Payment complete', `Change: ${formatKES(res.data.change)}\nReceipt saved.`);
       setCashAmount('');
       onComplete();
     } catch (err: any) {

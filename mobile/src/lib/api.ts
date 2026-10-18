@@ -89,7 +89,7 @@ export const inventoryApi = {
   updateProduct: (data: any) => api.put('/api/inventory/products', data),
   adjustStock: (data: any) => api.post('/api/inventory/stock/adjust', data),
   getStockLevels: (branchId: string) =>
-    api.get('/api/inventory/stock', { params: { branchId } }),
+    api.get('/api/inventory/stock/levels', { params: { branchId } }),
 };
 
 // ── Terminal ──
@@ -124,7 +124,37 @@ export const expensesApi = {
 export const userApi = {
   changePin: (currentPin: string, newPin: string) =>
     api.post('/api/auth/change-pin', { currentPin, newPin }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/api/auth/change-password', { currentPassword, newPassword }),
   getProfile: () => api.get('/api/auth/profile'),
+};
+
+// ── Audit ──
+export const auditApi = {
+  getLogs: (params?: { userId?: string; action?: string; entityType?: string; from?: string; to?: string; page?: number; pageSize?: number }) =>
+    api.get('/api/audit/logs', { params: { page: 1, pageSize: 50, ...params } }),
+};
+
+// ── Blobs / File Upload ──
+export const blobApi = {
+  upload: (uri: string, fileName: string, mimeType: string, category: string, referenceId?: string) => {
+    const formData = new FormData();
+    formData.append('file', { uri, name: fileName, type: mimeType } as unknown as Blob);
+    formData.append('category', category);
+    if (referenceId) formData.append('referenceId', referenceId);
+    return api.post('/api/blobs/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  getUrl: (id: string) => `${api.defaults.baseURL}/api/blobs/${id}`,
+  getByReference: (referenceId: string, category?: string) =>
+    api.get(`/api/blobs/by-reference/${referenceId}`, { params: { category } }),
+};
+
+// ── Receipts ──
+export const receiptApi = {
+  generate: (data: { saleId: string; businessName: string; branchName: string; branchAddress?: string; paymentMethod: string; amountPaid: number; change: number; mpesaRef?: string }) =>
+    api.post('/api/receipt/generate', data),
+  getBySale: (saleId: string) =>
+    api.get(`/api/receipt/by-sale/${saleId}`, { responseType: 'arraybuffer' }),
 };
 
 export default api;

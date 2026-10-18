@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Box, TextField, InputAdornment, Chip, Card, CardActionArea,
-  CardContent, Typography, CircularProgress,
+  CardContent, Typography, CircularProgress, IconButton, Tooltip,
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import SearchIcon from '@mui/icons-material/Search';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { inventoryApi } from '@/lib/api';
 
 interface Product {
@@ -25,6 +27,7 @@ interface Product {
 interface Category {
   id: string;
   name: string;
+  parentId: string | null;
 }
 
 interface Props {
@@ -87,14 +90,27 @@ export default function ProductGrid({ branchId, onAddProduct }: Props) {
         sx={{ mb: 1 }}
       />
 
-      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 1, minHeight: 36 }}>
+      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 1, minHeight: 36, alignItems: 'center' }}>
+        {selectedCat && categories.some((c) => c.parentId === selectedCat || categories.find((p) => p.id === selectedCat)?.parentId) ? (
+          <Tooltip title="Back">
+            <IconButton size="small" onClick={() => {
+              const current = categories.find((c) => c.id === selectedCat);
+              setSelectedCat(current?.parentId || null);
+            }}>
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : null}
         <Chip
           label="All"
           size="small"
           color={selectedCat === null ? 'primary' : 'default'}
           onClick={() => setSelectedCat(null)}
         />
-        {categories.map((cat) => (
+        {(selectedCat
+          ? categories.filter((c) => c.parentId === selectedCat)
+          : categories.filter((c) => !c.parentId)
+        ).map((cat) => (
           <Chip
             key={cat.id}
             label={cat.name}
@@ -103,6 +119,17 @@ export default function ProductGrid({ branchId, onAddProduct }: Props) {
             onClick={() => setSelectedCat(cat.id)}
           />
         ))}
+        {selectedCat && categories.filter((c) => c.parentId === selectedCat).length === 0 && (
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+            {categories.find((c) => c.id === selectedCat)?.name}
+          </Typography>
+        )}
+        <Box sx={{ flex: 1 }} />
+        <Tooltip title="Refresh">
+          <IconButton size="small" onClick={() => { loadProducts(search, selectedCat); loadCategories(); }}>
+            <RefreshIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <Box sx={{ flex: 1, overflow: 'auto' }}>
@@ -126,7 +153,14 @@ export default function ProductGrid({ branchId, onAddProduct }: Props) {
                     '&:hover': { borderColor: 'primary.main' },
                   }}
                 >
-                  <CardActionArea onClick={() => onAddProduct(p)} sx={{ p: 1.5, textAlign: 'center' }}>
+                  <CardActionArea
+                    onClick={() => {
+                      if (p.stockQuantity <= 0) return;
+                      onAddProduct(p);
+                    }}
+                    disabled={p.stockQuantity <= 0}
+                    sx={{ p: 1.5, textAlign: 'center' }}
+                  >
                     <CardContent sx={{ p: '0 !important' }}>
                       <Typography
                         variant="body2"

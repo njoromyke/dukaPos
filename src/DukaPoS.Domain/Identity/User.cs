@@ -12,6 +12,12 @@ public class User
     public UserRole Role { get; set; } = UserRole.Cashier;
     public bool IsActive { get; set; } = true;
     public Guid BranchId { get; set; }
+    public bool IsLocked { get; set; }
+    public DateTimeOffset? LockedAt { get; set; }
+    public int FailedLoginAttempts { get; set; }
+    public DateTimeOffset? LastLoginAt { get; set; }
+    public bool MustChangePassword { get; set; } = true;
+    public DateTimeOffset? LockoutEnd { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 public class TerminalSession
@@ -37,5 +43,11 @@ public class AuditLogEntry
     public string EntityType { get; set; } = default!;
     public Guid EntityId { get; set; }
     public string? Details { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public string? RequestPath { get; set; }
+    public string? HttpMethod { get; set; }
+    public string? OldValue { get; set; }
+    public string? NewValue { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

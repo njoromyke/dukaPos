@@ -214,7 +214,8 @@ export default function CategoriesPage() {
     setEditing(null);
     setName('');
     setParentId(preselectedParentId || '');
-    setSortOrder(0);
+    const siblings = categories.filter((c) => c.parentId === (preselectedParentId || null));
+    setSortOrder(siblings.length > 0 ? Math.max(...siblings.map((s) => s.sortOrder)) + 1 : 0);
     setDialogOpen(true);
   };
 

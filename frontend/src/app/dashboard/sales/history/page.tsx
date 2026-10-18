@@ -20,7 +20,10 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/auth-store';
-import { salesApi } from '@/lib/api';
+import IconButton from '@mui/material/IconButton';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ReceiptIcon from '@mui/icons-material/ReceiptLong';
+import { salesApi, receiptApi } from '@/lib/api';
 
 interface SaleRecord {
   id: string; saleNumber: string; status: string; cashierName: string;
@@ -55,9 +58,25 @@ export default function SalesHistoryPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleReceipt = async (e: React.MouseEvent, s: SaleRecord) => {
+    e.stopPropagation();
+    try {
+      const res = await receiptApi.getBySale(s.id);
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipt-${s.saleNumber}.bin`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* no receipt stored yet, generate one client-side */ }
+  };
+
   return (
     <Box>
-      <Typography variant="h5" mb={3}>Sales History</Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+        <Typography variant="h5">Sales History</Typography>
+        <IconButton onClick={load} title="Refresh"><RefreshIcon /></IconButton>
+      </Box>
       <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <TextField label="From" type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(0); }} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField label="To" type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(0); }} slotProps={{ inputLabel: { shrink: true } }} />
@@ -72,6 +91,7 @@ export default function SalesHistoryPage() {
               <TableCell>Status</TableCell>
               <TableCell align="right">Total</TableCell>
               <TableCell>Date</TableCell>
+              <TableCell width={50}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -82,6 +102,13 @@ export default function SalesHistoryPage() {
                 <TableCell><Chip label={s.status} size="small" color={statusColor[s.status] || 'default'} variant="outlined" /></TableCell>
                 <TableCell align="right">{formatKES(s.grandTotal)}</TableCell>
                 <TableCell>{dayjs(s.completedAt || s.startedAt).format('DD/MM/YYYY HH:mm')}</TableCell>
+                <TableCell>
+                  {s.status === 'Completed' && (
+                    <IconButton size="small" title="Download receipt" onClick={(e) => handleReceipt(e, s)}>
+                      <ReceiptIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
             {sales.length === 0 && (

@@ -84,3 +84,41 @@ public enum ExpenseCategory
     Maintenance,
     Other,
 }
+
+public enum AuditEventType
+{
+    Login,
+    Logout,
+    FailedLogin,
+    PasswordChange,
+    PinChange,
+    ProductCreated,
+    ProductUpdated,
+    StockAdjusted,
+    SaleCompleted,
+    SaleVoided,
+    PaymentReceived,
+    ExpenseCreated,
+    ExpenseApproved,
+    ExpenseRejected,
+    UserCreated,
+    UserUpdated,
+    UserLocked,
+    UserUnlocked,
+    CategoryCreated,
+    CategoryUpdated,
+    BranchUpdated,
+    TenantCreated,
+    TerminalLocked,
+    TerminalUnlocked,
+    MpesaStkPush,
+    MpesaCallback,
+}
+
+public enum ExpenseStatus
+{
+    Draft,
+    PendingApproval,
+    Approved,
+    Rejected,
+}

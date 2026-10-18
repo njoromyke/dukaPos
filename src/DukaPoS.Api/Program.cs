@@ -20,7 +20,10 @@ using DukaPoS.Messages.Reporting;
 using DukaPoS.Messages.Sales;
 using DukaPoS.Messages.Terminal;
 using DukaPoS.Messages.Admin;
+using DukaPoS.Messages.Audit;
 using DukaPoS.Messages.Tenancy;
+using DukaPoS.Messages.Storage;
+using DukaPoS.Domain.Storage;
 using Marten;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -346,12 +349,25 @@ receipt.MapPost("/generate", async (GenerateReceiptCommand command, IMessageBus 
     try
     {
         var result = await bus.InvokeAsync<ReceiptResult>(command);
-        return Results.File(result.Data, "application/octet-stream", $"receipt-{result.SaleNumber}.bin");
+        return Results.Ok(new { data = Convert.ToBase64String(result.Data), saleNumber = result.SaleNumber, blobId = result.BlobId });
     }
     catch (InvalidOperationException ex)
     {
         return Results.BadRequest(new { message = ex.Message });
     }
+});
+
+receipt.MapGet("/by-sale/{saleId:guid}", async (Guid saleId, IQuerySession session) =>
+{
+    var blob = await session.Query<BlobEntry>()
+        .Where(b => b.ReferenceId == saleId && b.Category == "receipt")
+        .OrderByDescending(b => b.CreatedAt)
+        .FirstOrDefaultAsync();
+
+    if (blob == null)
+        return Results.NotFound(new { message = "Receipt not found for this sale." });
+
+    return Results.File(blob.Data, blob.ContentType, blob.FileName);
 });
 
 // ── Inventory ──
@@ -414,6 +430,19 @@ inventory.MapPost("/categories", async (CreateCategoryCommand command, IMessageB
     return Results.Created($"/api/inventory/categories/{result.Id}", result);
 });
 
+inventory.MapPut("/categories", async (UpdateCategoryCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<Category>(command);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 // ── Terminal ──
 var terminal = app.MapGroup("/api/terminal").RequireAuthorization();
 
@@ -470,6 +499,32 @@ users.MapPut("/", async (UpdateUserCommand command, IMessageBus bus) =>
     try
     {
         var result = await bus.InvokeAsync<UserDto>(command);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+users.MapPost("/{userId:guid}/lock", async (Guid userId, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<UserDto>(new LockUserCommand(userId));
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+users.MapPost("/{userId:guid}/unlock", async (Guid userId, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<UserDto>(new UnlockUserCommand(userId));
         return Results.Ok(result);
     }
     catch (InvalidOperationException ex)
@@ -565,6 +620,34 @@ expenses.MapGet("/summary", async (Guid branchId, string? from, string? to, IMes
     return Results.Ok(result);
 });
 
+expenses.MapPost("/{id:guid}/approve", async (Guid id, ApproveExpenseCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var cmd = command with { Id = id };
+        var result = await bus.InvokeAsync<ExpenseDto>(cmd);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+expenses.MapPost("/{id:guid}/reject", async (Guid id, RejectExpenseCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var cmd = command with { Id = id };
+        var result = await bus.InvokeAsync<ExpenseDto>(cmd);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 // ── Reports ──
 var reports = app.MapGroup("/api/reports").RequireAuthorization();
 
@@ -641,6 +724,122 @@ admin.MapGet("/users", async (IMessageBus bus) =>
 {
     var result = await bus.InvokeAsync<IReadOnlyList<UserDto>>(new GetAllUsersQuery());
     return Results.Ok(result);
+});
+
+// ── Audit ──
+var audit = app.MapGroup("/api/audit").RequireAuthorization();
+
+audit.MapGet("/logs", async (Guid? userId, string? action, string? entityType,
+    DateTimeOffset? from, DateTimeOffset? to, int? page, int? pageSize, IMessageBus bus) =>
+{
+    var result = await bus.InvokeAsync<AuditLogsResult>(
+        new GetAuditLogsQuery(userId, action, entityType, from, to, page ?? 1, pageSize ?? 50));
+    return Results.Ok(result);
+});
+
+// ── Tenant Settings ──
+var tenantSettings = app.MapGroup("/api/tenant-settings").RequireAuthorization();
+
+tenantSettings.MapGet("/{tenantId}", async (string tenantId, IMessageBus bus) =>
+{
+    var result = await bus.InvokeAsync<TenantSettingsDto>(new GetTenantSettingsQuery(tenantId));
+    return Results.Ok(result);
+});
+
+tenantSettings.MapPut("/", async (UpdateTenantSettingsCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        var result = await bus.InvokeAsync<TenantSettingsDto>(command);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+// ── Auth extras ──
+auth.MapPost("/change-password", async (ChangePasswordCommand command, IMessageBus bus) =>
+{
+    try
+    {
+        await bus.InvokeAsync(command);
+        return Results.Ok(new { changed = true });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+}).RequireAuthorization();
+
+// ── File Upload / Blob Storage ──
+var blobs = app.MapGroup("/api/blobs").RequireAuthorization();
+
+blobs.MapPost("/upload", async (HttpRequest request, IMessageBus bus) =>
+{
+    if (!request.HasFormContentType)
+        return Results.BadRequest(new { message = "Expected multipart form data." });
+
+    var form = await request.ReadFormAsync();
+    var file = form.Files.FirstOrDefault();
+    if (file == null || file.Length == 0)
+        return Results.BadRequest(new { message = "No file provided." });
+
+    if (file.Length > 5 * 1024 * 1024)
+        return Results.BadRequest(new { message = "File too large. Maximum 5MB." });
+
+    var category = form["category"].ToString();
+    var referenceId = Guid.TryParse(form["referenceId"], out var refId) ? refId : (Guid?)null;
+
+    using var ms = new MemoryStream();
+    await file.CopyToAsync(ms);
+
+    var command = new UploadBlobCommand(file.FileName, file.ContentType, ms.ToArray(), category, referenceId);
+    var result = await bus.InvokeAsync<BlobDto>(command);
+
+    return Results.Ok(new { id = result.Id, url = $"/api/blobs/{result.Id}", fileName = result.FileName, size = result.Size });
+}).DisableAntiforgery();
+
+blobs.MapGet("/{id:guid}", async (Guid id, IMessageBus bus) =>
+{
+    try
+    {
+        var blob = await bus.InvokeAsync<BlobEntry>(new GetBlobQuery(id));
+        return Results.File(blob.Data, blob.ContentType, blob.FileName);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { message = ex.Message });
+    }
+});
+
+blobs.MapDelete("/{id:guid}", async (Guid id, IMessageBus bus) =>
+{
+    try
+    {
+        await bus.InvokeAsync(new DeleteBlobCommand(id));
+        return Results.Ok(new { deleted = true });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { message = ex.Message });
+    }
+});
+
+blobs.MapGet("/by-reference/{referenceId:guid}", async (Guid referenceId, string? category, IQuerySession session) =>
+{
+    var query = session.Query<BlobEntry>()
+        .Where(b => b.ReferenceId == referenceId);
+
+    if (!string.IsNullOrEmpty(category))
+        query = query.Where(b => b.Category == category);
+
+    var items = await query
+        .Select(b => new BlobDto(b.Id, b.FileName, b.ContentType, b.Size, b.Category, b.ReferenceId, b.CreatedAt))
+        .ToListAsync();
+
+    return Results.Ok(items);
 });
 
 app.Run();

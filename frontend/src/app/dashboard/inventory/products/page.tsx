@@ -24,8 +24,9 @@ import TablePagination from '@mui/material/TablePagination';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/EditOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuthStore } from '@/stores/auth-store';
-import { inventoryApi } from '@/lib/api';
+import { inventoryApi, blobApi } from '@/lib/api';
 import { useSnackbar } from 'notistack';
 
 interface Product {
@@ -49,6 +50,8 @@ export default function ProductsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: '', sku: '', barcode: '', categoryId: '', unit: 'piece', sellingPrice: '', costPrice: '', vatRate: '16', isWeighed: false, imageUrl: '' });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => { auth.hydrate(); }, []);
 
@@ -57,7 +60,7 @@ export default function ProductsPage() {
     try {
       const res = await inventoryApi.getProducts(auth.user.branchId, { search: search || undefined, categoryId: catFilter || undefined, page: page + 1, pageSize: 20 });
       const d = res.data;
-      const items = Array.isArray(d) ? d : Array.isArray(d?.items) ? d.items : [];
+      const items = Array.isArray(d) ? d : Array.isArray(d?.products) ? d.products : [];
       setProducts(items);
       setTotal(d?.totalCount ?? items.length);
     } catch { /* */ }
@@ -71,18 +74,33 @@ export default function ProductsPage() {
   const openCreate = () => {
     setEditing(null);
     setForm({ name: '', sku: '', barcode: '', categoryId: '', unit: 'piece', sellingPrice: '', costPrice: '', vatRate: '16', isWeighed: false, imageUrl: '' });
+    setImageFile(null);
+    setImagePreview(null);
     setDialogOpen(true);
   };
 
   const openEdit = (p: Product) => {
     setEditing(p);
     setForm({ name: p.name, sku: p.sku, barcode: p.barcode || '', categoryId: p.categoryId, unit: p.unit, sellingPrice: String(p.sellingPrice), costPrice: String(p.costPrice), vatRate: String(p.vatRate), isWeighed: p.isWeighed, imageUrl: '' });
+    setImageFile(null);
+    setImagePreview(null);
     setDialogOpen(true);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
   const handleSave = async () => {
-    const payload = { ...form, sellingPrice: parseFloat(form.sellingPrice), costPrice: parseFloat(form.costPrice), vatRate: parseInt(form.vatRate) };
+    const payload: Record<string, unknown> = { ...form, sellingPrice: parseFloat(form.sellingPrice), costPrice: parseFloat(form.costPrice), vatRate: parseInt(form.vatRate) };
     try {
+      if (imageFile) {
+        const uploadRes = await blobApi.upload(imageFile, 'product-image');
+        payload.imageUrl = blobApi.getUrl(uploadRes.data.id);
+      }
       if (editing) { await inventoryApi.updateProduct({ id: editing.id, ...payload }); }
       else { await inventoryApi.createProduct(payload); }
       enqueueSnackbar(editing ? 'Product updated' : 'Product created', { variant: 'success' });
@@ -95,7 +113,10 @@ export default function ProductsPage() {
     <Box>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
         <Typography variant="h5">Products</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>Add product</Button>
+        <Box display="flex" gap={1}>
+          <IconButton onClick={loadProducts} title="Refresh"><RefreshIcon /></IconButton>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>Add product</Button>
+        </Box>
       </Box>
 
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -172,6 +193,18 @@ export default function ProductsPage() {
                 <MenuItem value="16">16% (Standard)</MenuItem>
                 <MenuItem value="0">Exempt</MenuItem>
               </TextField>
+            </Box>
+            <Box>
+              <Button variant="outlined" component="label" size="small" sx={{ mb: 1 }}>
+                Upload Image
+                <input type="file" accept="image/*" hidden onChange={handleImageSelect} />
+              </Button>
+              {imagePreview && (
+                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box component="img" src={imagePreview} alt="Preview" sx={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }} />
+                  <Button size="small" color="error" onClick={() => { setImageFile(null); setImagePreview(null); }}>Remove</Button>
+                </Box>
+              )}
             </Box>
           </Box>
         </DialogContent>

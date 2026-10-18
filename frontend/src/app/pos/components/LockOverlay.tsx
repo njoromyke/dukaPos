@@ -43,9 +43,9 @@ export default function LockOverlay() {
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
     }}>
       <Avatar sx={{ width: 72, height: 72, mb: 2, bgcolor: 'primary.main', fontSize: 28 }}>
-        {auth.user?.name?.[0] || '?'}
+        {auth.user?.fullName?.[0] || '?'}
       </Avatar>
-      <Typography variant="h6" gutterBottom>{auth.user?.name || 'Locked'}</Typography>
+      <Typography variant="h6" gutterBottom>{auth.user?.fullName || 'Locked'}</Typography>
       <Typography variant="body2" color="text.secondary" mb={3}>Enter PIN to unlock</Typography>
 
       <Box display="flex" gap={2} mb={2}>

@@ -18,6 +18,6 @@ public static class GetAllUsersHandler
 
         return users.Select(u => new UserDto(
             u.Id, u.FullName, u.Email, u.Role.ToString(),
-            u.BranchId, u.IsActive, u.CreatedAt)).ToList();
+            u.BranchId, u.IsActive, u.IsLocked, u.MustChangePassword, u.CreatedAt)).ToList();
     }
 }
