@@ -38,3 +38,16 @@ public record AuditLogDto(
     string? RequestPath,
     string? HttpMethod,
     DateTimeOffset CreatedAt);
+
+public record ArchiveAuditLogsCommand(DateTimeOffset OlderThan);
+
+public record ArchiveAuditLogsResult(int ArchivedCount, string BatchId);
+
+public record GetArchivedAuditLogsQuery(
+    DateTimeOffset? From = null,
+    DateTimeOffset? To = null,
+    string? Action = null,
+    int Page = 1,
+    int PageSize = 50);
+
+public record ArchivedAuditLogsResult(IReadOnlyList<AuditLogDto> Items, int TotalCount, int Page, int PageSize);

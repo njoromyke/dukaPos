@@ -4,6 +4,7 @@ import { forwardRef } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
+import { formatCurrency } from '@/lib/utils';
 
 interface LineItem {
   productName: string;
@@ -32,7 +33,6 @@ interface ReceiptProps {
 
 const mono = { fontFamily: "'Courier New', Courier, monospace" };
 
-const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
 
 const ReceiptPreview = forwardRef<HTMLDivElement, ReceiptProps>(function ReceiptPreview(props, ref) {
   const {
@@ -93,16 +93,16 @@ const ReceiptPreview = forwardRef<HTMLDivElement, ReceiptProps>(function Receipt
 
       <Divider sx={{ borderStyle: 'dashed', my: 1 }} />
 
-      <Row label="Subtotal:" value={formatKES(subtotal)} />
-      <Row label="VAT:" value={formatKES(vatTotal)} />
-      {discountTotal > 0 && <Row label="Discount:" value={`-${formatKES(discountTotal)}`} />}
-      <Row label="TOTAL:" value={formatKES(grandTotal)} bold />
+      <Row label="Subtotal:" value={formatCurrency(subtotal)} />
+      <Row label="VAT:" value={formatCurrency(vatTotal)} />
+      {discountTotal > 0 && <Row label="Discount:" value={`-${formatCurrency(discountTotal)}`} />}
+      <Row label="TOTAL:" value={formatCurrency(grandTotal)} bold />
 
       <Divider sx={{ borderStyle: 'dashed', my: 1 }} />
 
       <Row label="Paid via:" value={paymentMethod} />
-      <Row label="Amount:" value={formatKES(amountPaid)} />
-      {change > 0 && <Row label="Change:" value={formatKES(change)} />}
+      <Row label="Amount:" value={formatCurrency(amountPaid)} />
+      {change > 0 && <Row label="Change:" value={formatCurrency(change)} />}
       {mpesaRef && <Row label="M-Pesa Ref:" value={mpesaRef} />}
 
       <Divider sx={{ borderStyle: 'dashed', my: 1 }} />

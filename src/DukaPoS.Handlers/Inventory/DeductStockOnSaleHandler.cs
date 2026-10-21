@@ -4,12 +4,13 @@ using DukaPoS.Domain.Sales;
 using DukaPoS.Messages.Inventory;
 using DukaPoS.Messages.Sales;
 using Marten;
+using Wolverine;
 
 namespace DukaPoS.Handlers.Inventory;
 
 public static class DeductStockOnSaleHandler
 {
-    public static async Task Handle(SaleCompletedEvent @event, IDocumentSession session)
+    public static async Task Handle(SaleCompletedEvent @event, IDocumentSession session, IMessageBus bus)
     {
         var sale = await session.LoadAsync<Sale>(@event.SaleId);
         if (sale == null) return;
@@ -24,6 +25,15 @@ public static class DeductStockOnSaleHandler
                 stockLevel.Quantity -= lineItem.Quantity;
                 stockLevel.UpdatedAt = DateTimeOffset.UtcNow;
                 session.Store(stockLevel);
+
+                if (stockLevel.Quantity <= stockLevel.ReorderLevel)
+                {
+                    var product = await session.LoadAsync<Product>(lineItem.ProductId);
+                    await bus.PublishAsync(new StockDepletedEvent(
+                        lineItem.ProductId, @event.BranchId,
+                        product?.Name ?? lineItem.ProductName,
+                        stockLevel.Quantity, stockLevel.ReorderLevel));
+                }
             }
 
             var movement = new StockMovement

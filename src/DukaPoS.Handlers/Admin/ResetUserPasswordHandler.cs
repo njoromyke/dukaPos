@@ -10,11 +10,15 @@ public static class ResetUserPasswordHandler
 {
     public static async Task<UserDto> Handle(
         ResetUserPasswordCommand command,
-        IDocumentSession session,
+        IDocumentStore store,
         IPasswordService passwordService)
     {
-        var user = await session.LoadAsync<User>(command.UserId)
-            ?? throw new InvalidOperationException("User not found");
+        if (string.IsNullOrWhiteSpace(command.NewPassword) || command.NewPassword.Length < 8)
+            throw new InvalidOperationException("Password must be at least 8 characters long.");
+        if (string.IsNullOrWhiteSpace(command.TenantId))
+            throw new InvalidOperationException("Tenant ID is required to reset a tenant user password.");
+        await using var session = store.LightweightSession(command.TenantId);
+        var user = await session.LoadAsync<User>(command.UserId) ?? throw new InvalidOperationException("User not found");
 
         user.PasswordHash = passwordService.Hash(command.NewPassword);
         user.MustChangePassword = true;
@@ -26,6 +30,6 @@ public static class ResetUserPasswordHandler
         await session.SaveChangesAsync();
 
         return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(),
-            user.BranchId, user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt);
+            user.BranchId, user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt, user.TenantId, user.Permissions, user.AssignedBranchIds);
     }
 }

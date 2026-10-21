@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
@@ -13,16 +12,14 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
-import Collapse from '@mui/material/Collapse';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/EditOutlined';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CategoryIcon from '@mui/icons-material/CategoryOutlined';
-import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
 import { inventoryApi } from '@/lib/api';
 import api from '@/lib/api';
 import { useSnackbar } from 'notistack';
+import { DPageHeader, DSearchFilter, DTable } from '@/components';
+import { useAuthStore } from '@/stores/auth-store';
 
 interface Category {
   id: string;
@@ -60,130 +57,19 @@ function buildTree(categories: Category[]): CategoryNode[] {
   return roots;
 }
 
-function CategoryRow({
-  node,
-  depth,
-  expanded,
-  onToggle,
-  onEdit,
-  onAddChild,
-}: {
-  node: CategoryNode;
-  depth: number;
-  expanded: Set<string>;
-  onToggle: (id: string) => void;
-  onEdit: (c: Category) => void;
-  onAddChild: (parentId: string) => void;
-}) {
-  const hasChildren = node.children.length > 0;
-  const isExpanded = expanded.has(node.id);
-
-  return (
-    <>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          pl: depth * 4 + 1.5,
-          pr: 2,
-          py: 1.5,
-          borderBottom: '1px solid #F1F5F9',
-          '&:hover': { bgcolor: '#F8FAFC' },
-          transition: 'background 0.15s',
-        }}
-      >
-        {hasChildren ? (
-          <IconButton size="small" onClick={() => onToggle(node.id)} sx={{ color: '#94A3B8' }}>
-            {isExpanded ? <ExpandMoreIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
-          </IconButton>
-        ) : (
-          <Box sx={{ width: 34 }} />
-        )}
-
-        {depth > 0 && <SubdirectoryArrowRightIcon sx={{ fontSize: 18, color: '#CBD5E1', mr: 0.5 }} />}
-
-        <Box
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: depth === 0
-              ? 'linear-gradient(135deg, #1565C0, #0D47A1)'
-              : 'linear-gradient(135deg, #7C3AED, #5B21B6)',
-            color: '#fff',
-            flexShrink: 0,
-          }}
-        >
-          <CategoryIcon sx={{ fontSize: 18 }} />
-        </Box>
-
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A' }}>
-            {node.name}
-          </Typography>
-          {hasChildren && (
-            <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-              {node.children.length} subcategor{node.children.length === 1 ? 'y' : 'ies'}
-            </Typography>
-          )}
-        </Box>
-
-        <Chip
-          label={`#${node.sortOrder}`}
-          size="small"
-          sx={{ bgcolor: '#F1F5F9', color: '#64748B', fontWeight: 600, fontSize: '0.7rem' }}
-        />
-
-        <IconButton
-          size="small"
-          onClick={() => onAddChild(node.id)}
-          sx={{ color: '#94A3B8', '&:hover': { color: '#1565C0', bgcolor: '#EFF6FF' } }}
-          title="Add subcategory"
-        >
-          <AddIcon fontSize="small" />
-        </IconButton>
-
-        <IconButton
-          size="small"
-          onClick={() => onEdit(node)}
-          sx={{ color: '#94A3B8', '&:hover': { color: '#7C3AED', bgcolor: '#F5F3FF' } }}
-        >
-          <EditIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
-      {hasChildren && (
-        <Collapse in={isExpanded}>
-          {node.children.map((child) => (
-            <CategoryRow
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              expanded={expanded}
-              onToggle={onToggle}
-              onEdit={onEdit}
-              onAddChild={onAddChild}
-            />
-          ))}
-        </Collapse>
-      )}
-    </>
-  );
-}
-
 export default function CategoriesPage() {
+  const auth = useAuthStore();
   const { enqueueSnackbar } = useSnackbar();
+  const canManageInventory = Boolean(["Admin", "SuperAdmin", "Manager"].includes(auth.user?.role || "")
+    || auth.user?.permissions?.includes("inventory.manage")
+    || auth.user?.permissions?.includes("admin.portal.view"));
   const [categories, setCategories] = useState<Category[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
   const [sortOrder, setSortOrder] = useState(0);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
 
   const load = () => {
     inventoryApi.getCategories().then((r) => {
@@ -194,21 +80,14 @@ export default function CategoriesPage() {
 
   useEffect(load, []);
 
-  const tree = buildTree(categories);
   const topLevel = categories.filter((c) => !c.parentId);
-
-  const toggleExpand = (id: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const expandAll = () => {
-    setExpanded(new Set(categories.filter((c) => categories.some((ch) => ch.parentId === c.id)).map((c) => c.id)));
-  };
+  const hierarchy: Array<Category & { depth: number; parentName: string }> = [];
+  const flatten = (nodes: CategoryNode[], depth = 0) => nodes.forEach((node) => {
+    hierarchy.push({ ...node, depth, parentName: categories.find((item) => item.id === node.parentId)?.name || '—' });
+    flatten(node.children, depth + 1);
+  });
+  flatten(buildTree(categories));
+  const filtered = hierarchy.filter((category) => `${category.name} ${category.parentName}`.toLowerCase().includes(search.toLowerCase()));
 
   const openCreate = (preselectedParentId?: string) => {
     setEditing(null);
@@ -247,8 +126,8 @@ export default function CategoriesPage() {
       enqueueSnackbar(editing ? 'Category updated' : 'Category created', { variant: 'success' });
       setDialogOpen(false);
       load();
-    } catch {
-      enqueueSnackbar('Failed to save', { variant: 'error' });
+    } catch (error: any) {
+      enqueueSnackbar(error.response?.data?.message || 'Failed to save category', { variant: 'error' });
     }
   };
 
@@ -256,75 +135,27 @@ export default function CategoriesPage() {
     ? categories.filter((c) => c.id !== editing.id && c.parentId !== editing.id)
     : categories;
 
+  const columns = [
+    { field: 'name', header: 'Name', render: (category: typeof hierarchy[number]) => <Box display="flex" alignItems="center" gap={1} sx={{ pl: category.depth * 2 }}><CategoryIcon color="primary" fontSize="small" /><Typography fontWeight={600}>{category.name}</Typography></Box> },
+    { field: 'parentName', header: 'Parent' },
+    { field: 'sortOrder', header: 'Sort order', render: (category: Category) => `#${category.sortOrder}` },
+    { field: 'isActive', header: 'Status', render: (category: Category) => <Chip size="small" label={category.isActive ? 'Active' : 'Inactive'} color={category.isActive ? 'success' : 'default'} /> },
+    { field: 'actions', header: 'Actions', sortable: false, render: (category: Category) => canManageInventory ? <Box display="flex" gap={0.5}><IconButton size="small" title="Add subcategory" onClick={() => openCreate(category.id)}><AddIcon fontSize="small" /></IconButton><IconButton size="small" title="Edit category" onClick={() => openEdit(category)}><EditIcon fontSize="small" /></IconButton></Box> : '—' },
+  ];
+
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 800, color: '#0F172A' }}>Categories</Typography>
-          <Typography variant="body2" sx={{ color: '#64748B', mt: 0.5 }}>
-            {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} &middot; {topLevel.length} top-level
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {categories.some((c) => categories.some((ch) => ch.parentId === c.id)) && (
-            <Button size="small" onClick={expandAll} sx={{ color: '#64748B' }}>
-              Expand all
-            </Button>
-          )}
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => openCreate()}
-            sx={{
-              background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
-              boxShadow: '0 2px 8px rgba(21,101,192,0.3)',
-            }}
-          >
-            Add category
-          </Button>
-        </Box>
-      </Box>
+      <DPageHeader
+        title="Categories"
+        subtitle={`${categories.length} categor${categories.length === 1 ? 'y' : 'ies'} · ${topLevel.length} top-level`}
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Inventory', href: '/dashboard/inventory/products' }, { label: 'Categories' }]}
+        action={canManageInventory ? (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => openCreate()}>Add category</Button>
+        ) : undefined}
+      />
 
-      <Paper sx={{ border: '1px solid #E2E8F0', boxShadow: 'none', overflow: 'hidden' }}>
-        <Box sx={{
-          display: 'flex', alignItems: 'center', px: 2.5, py: 1.5,
-          bgcolor: '#F8FAFC', borderBottom: '2px solid #E2E8F0',
-        }}>
-          <Typography sx={{
-            flex: 1, fontSize: '0.7rem', fontWeight: 700,
-            letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748B',
-          }}>
-            Category
-          </Typography>
-        </Box>
-
-        {tree.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 8 }}>
-            <CategoryIcon sx={{ fontSize: 48, color: '#CBD5E1', mb: 1 }} />
-            <Typography variant="body1" sx={{ color: '#64748B', fontWeight: 600, mb: 0.5 }}>
-              No categories yet
-            </Typography>
-            <Typography variant="body2" color="text.secondary" mb={2}>
-              Create categories to organize your products
-            </Typography>
-            <Button variant="outlined" startIcon={<AddIcon />} onClick={() => openCreate()}>
-              Create first category
-            </Button>
-          </Box>
-        ) : (
-          tree.map((node) => (
-            <CategoryRow
-              key={node.id}
-              node={node}
-              depth={0}
-              expanded={expanded}
-              onToggle={toggleExpand}
-              onEdit={openEdit}
-              onAddChild={(pid) => openCreate(pid)}
-            />
-          ))
-        )}
-      </Paper>
+      <DSearchFilter search={search} onSearchChange={setSearch} searchPlaceholder="Search categories..." onRefresh={load} />
+      <DTable columns={columns} rows={filtered} rowKey={(category) => category.id} emptyMessage="No categories found" />
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{

@@ -1,12 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  View, StyleSheet, KeyboardAvoidingView, Platform,
+  View, Text, StyleSheet, KeyboardAvoidingView, Platform,
   Alert, Pressable, Keyboard,
 } from 'react-native';
-import { Text, TextInput } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
-import * as Haptics from 'expo-haptics';
 import Animated, {
   FadeInDown, FadeInUp, useSharedValue,
   useAnimatedStyle, withSpring, withSequence,
@@ -14,7 +12,10 @@ import Animated, {
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores';
 import { authApi } from '@/lib/api';
-import { Colors } from '@/constants/Colors';
+
+import { registerForPushNotifications } from '@/lib/notifications';
+import { notification, NotificationFeedbackType } from '@/lib/haptics';
+import DTextInput from '@/components/ui/DTextInput';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -24,7 +25,26 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [rememberedIdentity, setRememberedIdentity] = useState(false);
+  const [identityLoaded, setIdentityLoaded] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      SecureStore.getItemAsync('tenantSlug'),
+      SecureStore.getItemAsync('loginEmail'),
+    ]).then(([savedSlug, savedEmail]) => {
+      if (!mounted) return;
+      if (savedSlug && savedEmail) {
+        setTenantSlug(savedSlug);
+        setEmail(savedEmail);
+        setRememberedIdentity(true);
+      }
+    }).finally(() => {
+      if (mounted) setIdentityLoaded(true);
+    });
+    return () => { mounted = false; };
+  }, []);
 
   const buttonScale = useSharedValue(1);
   const shakeX = useSharedValue(0);
@@ -39,8 +59,8 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     Keyboard.dismiss();
-    if (!tenantSlug || !email || !password) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    if ((!rememberedIdentity && (!tenantSlug || !email)) || !password) {
+      notification(NotificationFeedbackType.Warning);
       shakeX.value = withSequence(
         withSpring(10, { damping: 2, stiffness: 800 }),
         withSpring(-10, { damping: 2, stiffness: 800 }),
@@ -57,22 +77,33 @@ export default function LoginScreen() {
 
     try {
       const res = await authApi.login(email, password, tenantSlug);
-      const { token, user, tenantId } = res.data;
+      const { token, user, tenantId, subscription } = res.data;
 
       await SecureStore.setItemAsync('token', token);
       await SecureStore.setItemAsync('tenantId', tenantId);
+      await SecureStore.setItemAsync('tenantSlug', tenantSlug.trim().toLowerCase());
+      await SecureStore.setItemAsync('loginEmail', email.trim());
+      await SecureStore.setItemAsync('user', JSON.stringify(user));
+      await SecureStore.setItemAsync('subscriptionFeatures', JSON.stringify(subscription?.features ?? []));
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      auth.login(token, user, tenantId);
+      notification(NotificationFeedbackType.Success);
+      auth.login(token, user, tenantId, subscription?.features ?? []);
+      void registerForPushNotifications();
       router.replace('/(tabs)');
     } catch (err: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      notification(NotificationFeedbackType.Error);
       shakeX.value = withSequence(
         withSpring(12, { damping: 2, stiffness: 800 }),
         withSpring(-12, { damping: 2, stiffness: 800 }),
         withSpring(0, { damping: 10, stiffness: 400 }),
       );
-      Alert.alert('Login failed', err.response?.data?.message || 'Check your credentials');
+      const message = err.response?.data?.message
+        || (err.response?.status === 403
+          ? `Access was denied by ${err.response.config?.baseURL || 'the configured API'} (HTTP 403). The login endpoint is public; confirm the app is pointed at the intended DukaPoS API.`
+          : err.response
+          ? `The server at ${err.response.config?.baseURL || 'the configured API'} returned HTTP ${err.response.status}. Verify the API address and try again.`
+          : 'Cannot reach the DukaPoS server. Check your network and EXPO_PUBLIC_API_URL, then try again.');
+      Alert.alert('Login failed', message);
     } finally {
       setLoading(false);
       buttonScale.value = withSpring(1);
@@ -86,7 +117,6 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.inner}>
-          {/* Logo */}
           <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.logoContainer}>
             <View style={styles.logoIcon}>
               <Text style={styles.logoEmoji}>D</Text>
@@ -95,53 +125,45 @@ export default function LoginScreen() {
             <Text style={styles.subtitle}>Point of Sale Terminal</Text>
           </Animated.View>
 
-          {/* Form */}
           <Animated.View
             entering={FadeInUp.delay(200).duration(500).springify()}
             style={[styles.formCard, formAnimStyle]}
           >
-            <TextInput
-              label="Store ID"
-              mode="outlined"
-              placeholder="e.g. kilimani-duka"
-              value={tenantSlug}
-              onChangeText={setTenantSlug}
-              autoCapitalize="none"
-              left={<TextInput.Icon icon="store" />}
-              style={styles.input}
-              outlineStyle={styles.inputOutline}
-              theme={{ roundness: 12 }}
-            />
+            {!identityLoaded ? null : !rememberedIdentity && (
+              <DTextInput
+                label="Store ID"
+                placeholder="e.g. kilimani-duka"
+                value={tenantSlug}
+                onChangeText={setTenantSlug}
+                autoCapitalize="none"
+                left={{ icon: 'store' }}
+                containerStyle={styles.input}
+              />
+            )}
 
-            <TextInput
-              label="Email"
-              mode="outlined"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              left={<TextInput.Icon icon="email-outline" />}
-              style={styles.input}
-              outlineStyle={styles.inputOutline}
-              theme={{ roundness: 12 }}
-            />
+            {!identityLoaded ? null : !rememberedIdentity && (
+              <DTextInput
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                left={{ icon: 'email-outline' }}
+                containerStyle={styles.input}
+              />
+            )}
+            {identityLoaded && rememberedIdentity && (
+              <Text style={styles.subtitle}>{email} · {tenantSlug}</Text>
+            )}
 
-            <TextInput
+            <DTextInput
               label="Password"
-              mode="outlined"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              left={<TextInput.Icon icon="lock-outline" />}
-              right={
-                <TextInput.Icon
-                  icon={showPassword ? 'eye-off' : 'eye'}
-                  onPress={() => setShowPassword(!showPassword)}
-                />
-              }
-              style={styles.input}
-              outlineStyle={styles.inputOutline}
-              theme={{ roundness: 12 }}
+              secureTextEntry
+              left={{ icon: 'lock-outline' }}
+              visibilityToggle
+              containerStyle={styles.input}
             />
 
             <AnimatedPressable
@@ -150,7 +172,7 @@ export default function LoginScreen() {
               style={[buttonAnimStyle]}
             >
               <LinearGradient
-                colors={Colors.light.gradient as unknown as string[]}
+                colors={['#006D32', '#00D166']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.button}
@@ -194,8 +216,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08, shadowRadius: 12, elevation: 5,
   },
-  input: { marginBottom: 14, backgroundColor: '#FFFFFF' },
-  inputOutline: { borderColor: '#E2E8F0' },
+  input: { marginBottom: 14 },
   button: {
     height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
     marginTop: 8,

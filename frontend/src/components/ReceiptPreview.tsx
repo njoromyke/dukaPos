@@ -2,6 +2,7 @@
 
 import { forwardRef } from 'react';
 import { Box, Typography, Divider, Stack } from '@mui/material';
+import { formatCurrency } from '@/lib/utils';
 
 interface LineItem {
   id: string;
@@ -32,7 +33,6 @@ interface Props {
   receipt: ReceiptData;
 }
 
-const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
 
 const ReceiptPreview = forwardRef<HTMLDivElement, Props>(({ receipt }, ref) => {
   const now = receipt.completedAt
@@ -93,16 +93,16 @@ const ReceiptPreview = forwardRef<HTMLDivElement, Props>(({ receipt }, ref) => {
 
       <Stack direction="row" justifyContent="space-between">
         <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>Subtotal</Typography>
-        <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>{formatKES(receipt.subtotal)}</Typography>
+        <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>{formatCurrency(receipt.subtotal)}</Typography>
       </Stack>
       <Stack direction="row" justifyContent="space-between">
-        <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>VAT (16%)</Typography>
-        <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>{formatKES(receipt.vatTotal)}</Typography>
+        <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>VAT included</Typography>
+        <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>{formatCurrency(receipt.vatTotal)}</Typography>
       </Stack>
       {receipt.discountTotal > 0 && (
         <Stack direction="row" justifyContent="space-between">
           <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>Discount</Typography>
-          <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>-{formatKES(receipt.discountTotal)}</Typography>
+          <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>-{formatCurrency(receipt.discountTotal)}</Typography>
         </Stack>
       )}
 
@@ -110,7 +110,7 @@ const ReceiptPreview = forwardRef<HTMLDivElement, Props>(({ receipt }, ref) => {
 
       <Stack direction="row" justifyContent="space-between">
         <Typography sx={{ fontSize: 14, fontFamily: 'inherit', fontWeight: 800 }}>TOTAL</Typography>
-        <Typography sx={{ fontSize: 14, fontFamily: 'inherit', fontWeight: 800 }}>{formatKES(receipt.grandTotal)}</Typography>
+        <Typography sx={{ fontSize: 14, fontFamily: 'inherit', fontWeight: 800 }}>{formatCurrency(receipt.grandTotal)}</Typography>
       </Stack>
 
       {receipt.paymentMethod && (
@@ -123,13 +123,13 @@ const ReceiptPreview = forwardRef<HTMLDivElement, Props>(({ receipt }, ref) => {
           {receipt.amountTendered != null && (
             <Stack direction="row" justifyContent="space-between">
               <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>Tendered</Typography>
-              <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>{formatKES(receipt.amountTendered)}</Typography>
+              <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>{formatCurrency(receipt.amountTendered)}</Typography>
             </Stack>
           )}
           {receipt.change != null && receipt.change > 0 && (
             <Stack direction="row" justifyContent="space-between">
               <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>Change</Typography>
-              <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>{formatKES(receipt.change)}</Typography>
+              <Typography sx={{ fontSize: 11, fontFamily: 'inherit' }}>{formatCurrency(receipt.change)}</Typography>
             </Stack>
           )}
         </>

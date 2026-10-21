@@ -11,6 +11,18 @@ public static class GetStockLevelsHandler
         var stockQuery = session.Query<StockLevel>()
             .Where(sl => sl.BranchId == query.BranchId);
 
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            var matchedProductIds = await session.Query<Product>()
+                .Where(product => product.Name.Contains(search) || product.Sku.Contains(search))
+                .Select(product => product.Id)
+                .ToListAsync();
+            stockQuery = matchedProductIds.Count == 0
+                ? stockQuery.Where(level => level.ProductId == Guid.Empty)
+                : stockQuery.Where(level => level.ProductId.IsOneOf(matchedProductIds.ToArray()));
+        }
+
         if (query.LowStockOnly)
             stockQuery = stockQuery.Where(sl => sl.Quantity <= sl.ReorderLevel);
 

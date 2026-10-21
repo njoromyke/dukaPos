@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Pressable } from 'react-native';
-import { Text, Button, ProgressBar, Divider } from 'react-native-paper';
+import { View, Text, ScrollView, StyleSheet, RefreshControl, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores';
 import { reportsApi, expensesApi } from '@/lib/api';
 import ScreenHeader from '@/components/ui/ScreenHeader';
 import StatCard from '@/components/ui/StatCard';
-import { Colors } from '@/constants/Colors';
+import DProgressBar from '@/components/ui/DProgressBar';
+import FeatureUpgradeHint from '@/components/FeatureUpgradeHint';
+import { useAppTheme } from '@/lib/theme';
 
 interface DailySummary {
   totalSales: number;
@@ -36,9 +36,11 @@ interface ExpenseSummary {
 }
 
 export default function ReportsScreen() {
+  const { colors } = useAppTheme();
   const auth = useAuthStore();
   const branchId = auth.user?.branchId || '';
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const [date, setDate] = useState(today);
   const [summary, setSummary] = useState<DailySummary | null>(null);
@@ -46,22 +48,82 @@ export default function ReportsScreen() {
   const [payments, setPayments] = useState<PaymentBreakdown | null>(null);
   const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 0 })}`;
 
   const loadData = useCallback(async () => {
-    try {
-      const [sumRes, topRes, payRes, expRes] = await Promise.all([
-        reportsApi.getDailySummary(branchId, date),
-        reportsApi.getTopProducts(branchId, date, date, 5),
-        reportsApi.getPaymentBreakdown(branchId, date, date),
-        expensesApi.summary(branchId, date, date),
-      ]);
-      setSummary(sumRes.data);
-      setTopProducts(topRes.data || []);
-      setPayments(payRes.data);
-      setExpenseSummary(expRes.data);
-    } catch {}
+    if (!branchId) {
+      setLoadError('No branch is assigned to this account. Select a branch and try again.');
+      return;
+    }
+    setLoadError('');
+    const results = await Promise.allSettled([
+      reportsApi.getDailySummary(branchId, date),
+      reportsApi.getTopProducts(branchId, date, date, 5),
+      reportsApi.getPaymentBreakdown(branchId, date, date),
+      expensesApi.summary(branchId, date, date),
+    ]);
+    const [sumResult, topResult, paymentResult, expenseResult] = results;
+
+    if (sumResult.status === 'fulfilled') {
+      const value = sumResult.value.data;
+      const cash = Number(value.cashTotal ?? value.CashTotal ?? 0);
+      const mpesa = Number(value.mpesaTotal ?? value.MpesaTotal ?? 0);
+      setSummary({
+        totalSales: Number(value.totalSales ?? value.TotalSales ?? 0),
+        revenue: Number(value.totalRevenue ?? value.TotalRevenue ?? value.revenue ?? value.Revenue ?? 0),
+        averageBasket: Number(value.averageBasket ?? value.AverageBasket ?? 0),
+        topPaymentMethod: cash === 0 && mpesa === 0 ? '--' : cash >= mpesa ? 'Cash' : 'M-Pesa',
+      });
+    } else {
+      setSummary(null);
+    }
+
+    if (topResult.status === 'fulfilled') {
+      const values = topResult.value.data;
+      setTopProducts((Array.isArray(values) ? values : []).map((product: any) => ({
+        productName: product.productName ?? product.ProductName ?? 'Product',
+        revenue: Number(product.revenue ?? product.Revenue ?? 0),
+        quantity: Number(product.quantitySold ?? product.QuantitySold ?? product.quantity ?? 0),
+      })));
+    } else {
+      setTopProducts([]);
+    }
+
+    if (paymentResult.status === 'fulfilled') {
+      const values = Array.isArray(paymentResult.value.data) ? paymentResult.value.data : [];
+      const breakdown = values.reduce((totals: PaymentBreakdown, item: any) => {
+        const method = String(item.method ?? item.Method ?? '').toLowerCase();
+        const amt = Number(item.total ?? item.Total ?? 0);
+        if (method.includes('cash')) totals.cash += amt;
+        if (method.includes('mpesa') || method.includes('m-pesa')) totals.mpesa += amt;
+        totals.total += amt;
+        return totals;
+      }, { cash: 0, mpesa: 0, total: 0 });
+      setPayments(breakdown);
+    } else {
+      setPayments(null);
+    }
+
+    if (expenseResult.status === 'fulfilled') {
+      const value = expenseResult.value.data;
+      setExpenseSummary({
+        totalAmount: Number(value.totalAmount ?? value.TotalAmount ?? 0),
+        count: Number(value.count ?? value.Count ?? 0),
+        byCategory: value.byCategory ?? value.ByCategory ?? [],
+      });
+    } else {
+      setExpenseSummary(null);
+    }
+
+    if (results.slice(0, 3).every((result) => result.status === 'rejected')) {
+      const failure = results[0].status === 'rejected' ? results[0].reason : null;
+      const status = failure?.response?.status;
+      setLoadError(status === 403
+        ? 'Your account cannot view reports for this branch.'
+        : failure?.response?.data?.message || 'Could not load reports. Pull down to retry.');
+    }
   }, [branchId, date]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -73,158 +135,130 @@ export default function ReportsScreen() {
   };
 
   const changeDate = (offset: number) => {
-    const d = new Date(date);
-    d.setDate(d.getDate() + offset);
-    if (d <= new Date()) setDate(d.toISOString().split('T')[0]);
+    const [year, month, day] = date.split('-').map(Number);
+    const d = new Date(year, month - 1, day + offset);
+    const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (next <= today) setDate(next);
   };
 
   const isToday = date === today;
-  const maxRevenue = topProducts.length > 0 ? Math.max(...topProducts?.map((p) => p.revenue)) : 1;
+  const maxRevenue = topProducts.length > 0 ? Math.max(...topProducts.map((p) => p.revenue)) : 1;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScreenHeader
         title="Reports"
         rightAction={
-          <Pressable onPress={() => router.push('/sales-history')} style={styles.historyBtn}>
-            <MaterialCommunityIcons name="history" size={18} color={Colors.light.primary} />
-            <Text style={styles.historyText}>History</Text>
+          <Pressable onPress={() => router.push('/sales-history')} style={[styles.historyBtn, { backgroundColor: colors.primaryLight }]}>
+            <MaterialCommunityIcons name="history" size={18} color={colors.primary} />
+            <Text style={[styles.historyText, { color: colors.primary }]}>History</Text>
           </Pressable>
         }
       />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 24 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {/* Date picker */}
-        <Animated.View entering={FadeIn.duration(300)} style={styles.dateRow}>
-          <Pressable onPress={() => changeDate(-1)} style={styles.dateBtn}>
-            <MaterialCommunityIcons name="chevron-left" size={22} color="#64748B" />
+        {loadError ? <Text style={[styles.loadError, { color: colors.danger }]}>{loadError}</Text> : null}
+
+        <View style={styles.dateRow}>
+          <Pressable onPress={() => changeDate(-1)} style={[styles.dateBtn, { backgroundColor: colors.surface }]}>
+            <MaterialCommunityIcons name="chevron-left" size={22} color={colors.textSecondary} />
           </Pressable>
           <View style={styles.dateCenter}>
-            <Text style={styles.dateText}>
+            <Text style={[styles.dateText, { color: colors.text }]}>
               {new Date(date).toLocaleDateString('en-KE', {
                 weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
               })}
             </Text>
-            {isToday && <View style={styles.todayDot} />}
+            {isToday && <View style={[styles.todayDot, { backgroundColor: colors.primary }]} />}
           </View>
           <Pressable
             onPress={() => changeDate(1)}
-            style={[styles.dateBtn, isToday && { opacity: 0.3 }]}
+            style={[styles.dateBtn, { backgroundColor: colors.surface }, isToday && { opacity: 0.3 }]}
             disabled={isToday}
           >
-            <MaterialCommunityIcons name="chevron-right" size={22} color="#64748B" />
+            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
           </Pressable>
-        </Animated.View>
-
-        {/* Summary stats */}
-        <View style={styles.statsGrid}>
-          <StatCard
-            label="Total Sales" value={summary?.totalSales?.toString() || '0'}
-            icon="receipt" color={Colors.light.primary} bgColor={Colors.light.primaryLight}
-            delay={100}
-          />
-          <StatCard
-            label="Revenue" value={formatKES(summary?.revenue || 0)}
-            icon="cash-multiple" color={Colors.light.secondary} bgColor={Colors.light.secondaryLight}
-            delay={150}
-          />
-          <StatCard
-            label="Avg Basket" value={formatKES(summary?.averageBasket || 0)}
-            icon="cart-outline" color="#8B5CF6" bgColor="#EDE9FE"
-            delay={200}
-          />
-          <StatCard
-            label="Top Method" value={summary?.topPaymentMethod || '--'}
-            icon="credit-card-outline" color={Colors.light.accent} bgColor={Colors.light.accentLight}
-            delay={250}
-          />
         </View>
 
-        {/* Top products */}
-        <Animated.View entering={FadeInUp.delay(300).springify()} style={styles.section}>
-          <Text style={styles.sectionTitle}>Top Products</Text>
-          {topProducts.length === 0 ? (
-            <Text style={styles.noData}>No data for this date</Text>
+        <View style={styles.statsGrid}>
+          <StatCard label="Total Sales" value={summary?.totalSales?.toString() || '0'} icon="receipt" color={colors.primary} bgColor={colors.primaryLight} delay={100} />
+          <StatCard label="Revenue" value={formatKES(summary?.revenue || 0)} icon="cash-multiple" color={colors.secondary} bgColor={colors.secondaryLight} delay={150} />
+          <StatCard label="Avg Basket" value={formatKES(summary?.averageBasket || 0)} icon="cart-outline" color="#8B5CF6" bgColor="#EDE9FE" delay={200} />
+          <StatCard label="Top Method" value={summary?.topPaymentMethod || '--'} icon="credit-card-outline" color={colors.accent} bgColor={colors.accentLight} delay={250} />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Products</Text>
+          {auth.features.length > 0 && !auth.features.includes('top_products_reports') ? (
+            <FeatureUpgradeHint feature="top_products_reports" label="Top products report" />
+          ) : topProducts.length === 0 ? (
+            <Text style={[styles.noData, { color: colors.textSecondary }]}>No data for this date</Text>
           ) : (
-            topProducts?.map((p, i) => (
+            topProducts.map((p, i) => (
               <View key={i} style={styles.productRow}>
                 <View style={styles.productInfo}>
-                  <Text style={styles.productRank}>{i + 1}</Text>
+                  <Text style={[styles.productRank, { backgroundColor: colors.primaryLight, color: colors.primary }]}>{i + 1}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.productName}>{p.productName}</Text>
-                    <Text style={styles.productQty}>{p.quantity} sold</Text>
+                    <Text style={[styles.productName, { color: colors.text }]}>{p.productName}</Text>
+                    <Text style={[styles.productQty, { color: colors.textSecondary }]}>{p.quantity} sold</Text>
                   </View>
-                  <Text style={styles.productRev}>{formatKES(p.revenue)}</Text>
+                  <Text style={[styles.productRev, { color: colors.primary }]}>{formatKES(p.revenue)}</Text>
                 </View>
-                <ProgressBar
-                  progress={p.revenue / maxRevenue}
-                  color={Colors.light.primary}
-                  style={styles.progressBar}
-                />
+                <DProgressBar progress={p.revenue / maxRevenue} color={colors.primary} />
               </View>
             ))
           )}
-        </Animated.View>
+        </View>
 
-        {/* Payments */}
-        <Animated.View entering={FadeInUp.delay(400).springify()} style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Breakdown</Text>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment Breakdown</Text>
           {payments && payments.total > 0 ? (
-            <View style={styles.paymentsCard}>
+            <View style={[styles.paymentsCard, { backgroundColor: colors.surface }]}>
               <View style={styles.paymentRow}>
-                <View style={[styles.paymentDot, { backgroundColor: Colors.light.secondary }]} />
-                <Text style={styles.paymentLabel}>Cash</Text>
-                <Text style={styles.paymentValue}>{formatKES(payments.cash)}</Text>
+                <View style={[styles.paymentDot, { backgroundColor: colors.secondary }]} />
+                <Text style={[styles.paymentLabel, { color: colors.textSecondary }]}>Cash</Text>
+                <Text style={[styles.paymentValue, { color: colors.text }]}>{formatKES(payments.cash)}</Text>
               </View>
-              <ProgressBar
-                progress={payments.cash / payments.total}
-                color={Colors.light.secondary}
-                style={styles.progressBar}
-              />
+              <DProgressBar progress={payments.cash / payments.total} color={colors.secondary} />
               <View style={[styles.paymentRow, { marginTop: 14 }]}>
-                <View style={[styles.paymentDot, { backgroundColor: Colors.light.accent }]} />
-                <Text style={styles.paymentLabel}>M-Pesa</Text>
-                <Text style={styles.paymentValue}>{formatKES(payments.mpesa)}</Text>
+                <View style={[styles.paymentDot, { backgroundColor: colors.accent }]} />
+                <Text style={[styles.paymentLabel, { color: colors.textSecondary }]}>M-Pesa</Text>
+                <Text style={[styles.paymentValue, { color: colors.text }]}>{formatKES(payments.mpesa)}</Text>
               </View>
-              <ProgressBar
-                progress={payments.mpesa / payments.total}
-                color={Colors.light.accent}
-                style={styles.progressBar}
-              />
+              <DProgressBar progress={payments.mpesa / payments.total} color={colors.accent} />
             </View>
           ) : (
-            <Text style={styles.noData}>No payments for this date</Text>
+            <Text style={[styles.noData, { color: colors.textSecondary }]}>No payments for this date</Text>
           )}
-        </Animated.View>
+        </View>
 
-        {/* Expenses */}
         {expenseSummary && expenseSummary.count > 0 && (
-          <Animated.View entering={FadeInUp.delay(500).springify()} style={styles.section}>
-            <Text style={styles.sectionTitle}>Expenses</Text>
-            <View style={styles.expenseCard}>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Expenses</Text>
+            <View style={[styles.expenseCard, { backgroundColor: colors.surface }]}>
               <View style={styles.paymentRow}>
-                <Text style={styles.paymentLabel}>Total</Text>
-                <Text style={[styles.paymentValue, { color: Colors.light.danger }]}>
+                <Text style={[styles.paymentLabel, { color: colors.textSecondary }]}>Total</Text>
+                <Text style={[styles.paymentValue, { color: colors.danger }]}>
                   {formatKES(expenseSummary.totalAmount)}
                 </Text>
               </View>
-              <Text style={styles.expenseCount}>
+              <Text style={[styles.expenseCount, { color: colors.textSecondary }]}>
                 {expenseSummary.count} transaction{expenseSummary.count !== 1 ? 's' : ''}
               </Text>
               <View style={styles.expenseTags}>
                 {expenseSummary.byCategory.map((cat) => (
-                  <View key={cat.category} style={styles.expenseTag}>
-                    <Text style={styles.expenseTagText}>
+                  <View key={cat.category} style={[styles.expenseTag, { backgroundColor: colors.border }]}>
+                    <Text style={[styles.expenseTagText, { color: colors.textSecondary }]}>
                       {cat.category}: {formatKES(cat.total)}
                     </Text>
                   </View>
                 ))}
               </View>
             </View>
-          </Animated.View>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -232,64 +266,57 @@ export default function ReportsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
+  container: { flex: 1 },
   historyBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: Colors.light.primaryLight,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
   },
-  historyText: { fontSize: 13, fontWeight: '600', color: Colors.light.primary },
+  historyText: { fontSize: 13, fontWeight: '600' },
   dateRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 16, paddingVertical: 16,
   },
   dateBtn: {
     width: 36, height: 36, borderRadius: 10,
-    backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+    alignItems: 'center', justifyContent: 'center',
   },
   dateCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dateText: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
-  todayDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.light.primary },
+  dateText: { fontSize: 15, fontWeight: '700' },
+  todayDot: { width: 6, height: 6, borderRadius: 3 },
   statsGrid: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 12,
     paddingHorizontal: 16,
   },
   section: { paddingHorizontal: 16, paddingTop: 24 },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: '#1E293B', marginBottom: 14 },
-  noData: { color: '#94A3B8', fontSize: 14 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 14 },
+  noData: { fontSize: 14 },
+  loadError: { marginHorizontal: 16, marginTop: 12, fontSize: 13 },
   productRow: { marginBottom: 16 },
   productInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
   productRank: {
     width: 24, height: 24, borderRadius: 8,
-    backgroundColor: Colors.light.primaryLight, textAlign: 'center',
-    lineHeight: 24, fontSize: 12, fontWeight: '800', color: Colors.light.primary,
+    textAlign: 'center',
+    lineHeight: 24, fontSize: 12, fontWeight: '800',
     overflow: 'hidden',
   },
-  productName: { fontSize: 14, fontWeight: '600', color: '#334155' },
-  productQty: { fontSize: 12, color: '#94A3B8' },
-  productRev: { fontSize: 14, fontWeight: '800', color: Colors.light.primary },
-  progressBar: { height: 6, borderRadius: 3, backgroundColor: '#F1F5F9' },
+  productName: { fontSize: 14, fontWeight: '600' },
+  productQty: { fontSize: 12 },
+  productRev: { fontSize: 14, fontWeight: '800' },
   paymentsCard: {
-    backgroundColor: '#FFF', borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    borderRadius: 16, padding: 16,
   },
   paymentRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   paymentDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  paymentLabel: { flex: 1, fontSize: 14, color: '#64748B' },
-  paymentValue: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
+  paymentLabel: { flex: 1, fontSize: 14 },
+  paymentValue: { fontSize: 14, fontWeight: '800' },
   expenseCard: {
-    backgroundColor: '#FFF', borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    borderRadius: 16, padding: 16,
   },
-  expenseCount: { fontSize: 12, color: '#94A3B8', marginBottom: 10 },
+  expenseCount: { fontSize: 12, marginBottom: 10 },
   expenseTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   expenseTag: {
-    backgroundColor: Colors.light.accentLight, borderRadius: 8,
+    borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 4,
   },
-  expenseTagText: { fontSize: 12, fontWeight: '600', color: '#D97706' },
+  expenseTagText: { fontSize: 12, fontWeight: '600' },
 });

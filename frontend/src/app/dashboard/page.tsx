@@ -10,8 +10,13 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import ReceiptIcon from '@mui/icons-material/ReceiptLongOutlined';
 import PaymentsIcon from '@mui/icons-material/PaymentsOutlined';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroidOutlined';
 import { useAuthStore } from '@/stores/auth-store';
 import { reportsApi, expensesApi } from '@/lib/api';
+import { formatCurrency } from '@/lib/utils';
+import { DStatCard, DPageHeader } from '@/components';
+import dayjs from 'dayjs';
 
 interface DailySummary {
   totalSales: number;
@@ -28,44 +33,14 @@ interface ExpenseSummary {
   byCategory: { category: string; total: number; count: number }[];
 }
 
-const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  gradient: string;
-  shadow: string;
-}
-
-function StatCard({ label, value, icon, gradient, shadow }: StatCardProps) {
-  return (
-    <Paper sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2.5, border: '1px solid #E2E8F0', boxShadow: 'none' }}>
-      <Box sx={{
-        width: 52, height: 52, borderRadius: 3, display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-        background: gradient, color: '#fff', boxShadow: shadow,
-      }}>
-        {icon}
-      </Box>
-      <Box>
-        <Typography sx={{ color: '#64748B', fontSize: '0.8rem', fontWeight: 500 }}>{label}</Typography>
-        <Typography sx={{ fontWeight: 800, color: '#0F172A', fontSize: '1.35rem' }}>{value}</Typography>
-      </Box>
-    </Paper>
-  );
-}
-
 export default function DashboardPage() {
   const auth = useAuthStore();
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [expenses, setExpenses] = useState<ExpenseSummary | null>(null);
 
-  useEffect(() => { auth.hydrate(); }, []);
-
   useEffect(() => {
     if (!auth.user?.branchId) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = dayjs().format('YYYY-MM-DD');
     Promise.all([
       reportsApi.dailySummary(auth.user.branchId),
       expensesApi.summary(auth.user.branchId, today, today),
@@ -76,129 +51,150 @@ export default function DashboardPage() {
   }, [auth.user?.branchId]);
 
   const netRevenue = (summary?.totalRevenue ?? 0) - (expenses?.totalAmount ?? 0);
+  const cashPct = summary?.totalRevenue ? (summary.cashTotal / summary.totalRevenue * 100) : 0;
+  const mpesaPct = summary?.totalRevenue ? (summary.mpesaTotal / summary.totalRevenue * 100) : 0;
 
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 800, color: '#0F172A' }}>Dashboard</Typography>
-        <Typography variant="body2" sx={{ color: '#64748B', mt: 0.5 }}>
-          Today&apos;s summary for {auth.user?.fullName || 'your branch'}
-        </Typography>
-      </Box>
+      <DPageHeader
+        title="Dashboard"
+        subtitle={`Today's performance overview • ${dayjs().format('dddd, DD MMM YYYY')}`}
+      />
 
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            label="Total Sales"
-            value={String(summary?.totalSales ?? 0)}
-            icon={<ReceiptIcon />}
-            gradient="linear-gradient(135deg, #1565C0, #0D47A1)"
-            shadow="0 4px 12px rgba(21,101,192,0.3)"
-          />
+          <DStatCard label="Total Sales" value={String(summary?.totalSales ?? 0)} icon={<ReceiptIcon />} color="#0284C7" />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            label="Revenue"
-            value={formatKES(summary?.totalRevenue ?? 0)}
-            icon={<TrendingUpIcon />}
-            gradient="linear-gradient(135deg, #059669, #047857)"
-            shadow="0 4px 12px rgba(5,150,105,0.3)"
-          />
+          <DStatCard label="Revenue" value={formatCurrency(summary?.totalRevenue ?? 0)} icon={<TrendingUpIcon />} color="#059669" />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            label="Expenses"
-            value={formatKES(expenses?.totalAmount ?? 0)}
-            icon={<TrendingDownIcon />}
-            gradient="linear-gradient(135deg, #D97706, #B45309)"
-            shadow="0 4px 12px rgba(217,119,6,0.3)"
-          />
+          <DStatCard label="Expenses" value={formatCurrency(expenses?.totalAmount ?? 0)} icon={<TrendingDownIcon />} color="#D97706" />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            label="Net Revenue"
-            value={formatKES(netRevenue)}
-            icon={<PaymentsIcon />}
-            gradient={netRevenue >= 0
-              ? 'linear-gradient(135deg, #059669, #047857)'
-              : 'linear-gradient(135deg, #DC2626, #B91C1C)'}
-            shadow={netRevenue >= 0
-              ? '0 4px 12px rgba(5,150,105,0.3)'
-              : '0 4px 12px rgba(220,38,38,0.3)'}
-          />
+          <DStatCard label="Net Revenue" value={formatCurrency(netRevenue)} icon={<PaymentsIcon />} color={netRevenue >= 0 ? '#059669' : '#DC2626'} />
         </Grid>
       </Grid>
 
       <Grid container spacing={2.5} sx={{ mt: 0.5 }}>
         <Grid size={{ xs: 12, md: 6 }}>
-          <Paper sx={{ p: 3, height: '100%', border: '1px solid #E2E8F0', boxShadow: 'none' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#0F172A', mb: 2.5 }}>
-              Payment Breakdown
-            </Typography>
+          <Paper sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider', overflow: 'hidden', position: 'relative' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.9375rem', color: 'text.primary' }}>
+                Payment Breakdown
+              </Typography>
+              {summary && (
+                <Chip
+                  label={`Top: ${summary.topPaymentMethod || 'N/A'}`}
+                  size="small"
+                  sx={{ bgcolor: '#ECFDF5', color: '#047857', fontWeight: 600, fontSize: '0.7rem' }}
+                />
+              )}
+            </Box>
             {summary ? (
-              <Box display="flex" gap={4}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ color: '#64748B', fontSize: '0.8rem', mb: 0.5 }}>Cash</Typography>
-                  <Typography sx={{ fontWeight: 800, color: '#0F172A', fontSize: '1.25rem' }}>
-                    {formatKES(summary.cashTotal)}
-                  </Typography>
-                  <Box sx={{ width: '100%', height: 4, borderRadius: 2, bgcolor: '#E2E8F0', mt: 1.5 }}>
-                    <Box sx={{
-                      height: 4, borderRadius: 2,
-                      background: 'linear-gradient(90deg, #1565C0, #42A5F5)',
-                      width: summary.totalRevenue ? `${(summary.cashTotal / summary.totalRevenue * 100)}%` : '0%',
-                    }} />
-                  </Box>
+              <Box>
+                {/* Multi-segment bar */}
+                <Box sx={{
+                  display: 'flex', width: '100%', height: 10, borderRadius: 5,
+                  overflow: 'hidden', bgcolor: '#F1F5F9', mb: 3,
+                }}>
+                  <Box sx={{
+                    width: `${cashPct}%`,
+                    background: 'linear-gradient(90deg, #0284C7, #38BDF8)',
+                    transition: 'width 0.5s ease',
+                  }} />
+                  <Box sx={{
+                    width: `${mpesaPct}%`,
+                    background: 'linear-gradient(90deg, #059669, #34D399)',
+                    transition: 'width 0.5s ease',
+                  }} />
                 </Box>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ color: '#64748B', fontSize: '0.8rem', mb: 0.5 }}>M-Pesa</Typography>
-                  <Typography sx={{ fontWeight: 800, color: '#0F172A', fontSize: '1.25rem' }}>
-                    {formatKES(summary.mpesaTotal)}
-                  </Typography>
-                  <Box sx={{ width: '100%', height: 4, borderRadius: 2, bgcolor: '#E2E8F0', mt: 1.5 }}>
-                    <Box sx={{
-                      height: 4, borderRadius: 2,
-                      background: 'linear-gradient(90deg, #059669, #34D399)',
-                      width: summary.totalRevenue ? `${(summary.mpesaTotal / summary.totalRevenue * 100)}%` : '0%',
-                    }} />
+
+                <Box display="flex" gap={3}>
+                  <Box sx={{ flex: 1, p: 2, borderRadius: 2.5, bgcolor: '#F0F9FF', border: '1px solid #BAE6FD' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <AccountBalanceWalletIcon sx={{ fontSize: 18, color: '#0284C7' }} />
+                      <Typography sx={{ color: '#0369A1', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cash</Typography>
+                    </Box>
+                    <Typography sx={{ fontWeight: 800, color: '#0F172A', fontSize: '1.25rem' }}>
+                      {formatCurrency(summary.cashTotal)}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.7rem', color: '#64748B', mt: 0.5 }}>
+                      {cashPct.toFixed(0)}% of total
+                    </Typography>
+                  </Box>
+                  <Box sx={{ flex: 1, p: 2, borderRadius: 2.5, bgcolor: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <PhoneAndroidIcon sx={{ fontSize: 18, color: '#059669' }} />
+                      <Typography sx={{ color: '#047857', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>M-Pesa</Typography>
+                    </Box>
+                    <Typography sx={{ fontWeight: 800, color: '#0F172A', fontSize: '1.25rem' }}>
+                      {formatCurrency(summary.mpesaTotal)}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.7rem', color: '#64748B', mt: 0.5 }}>
+                      {mpesaPct.toFixed(0)}% of total
+                    </Typography>
                   </Box>
                 </Box>
               </Box>
             ) : (
-              <Typography variant="body2" color="text.secondary">Loading...</Typography>
+              <Box sx={{ py: 4, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">Loading payment data...</Typography>
+              </Box>
             )}
           </Paper>
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <Paper sx={{ p: 3, height: '100%', border: '1px solid #E2E8F0', boxShadow: 'none' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#0F172A', mb: 2.5 }}>
-              Expenses Breakdown
-            </Typography>
+          <Paper sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.9375rem', color: 'text.primary' }}>
+                Expenses Breakdown
+              </Typography>
+              {expenses && expenses.count > 0 && (
+                <Chip
+                  label={`${expenses.count} transaction${expenses.count !== 1 ? 's' : ''}`}
+                  size="small"
+                  sx={{ bgcolor: '#FFF7ED', color: '#B45309', fontWeight: 600, fontSize: '0.7rem' }}
+                />
+              )}
+            </Box>
             {expenses && expenses.count > 0 ? (
               <Box>
-                <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={2}>
-                  <Typography sx={{ color: '#64748B', fontSize: '0.85rem' }}>
-                    {expenses.count} transaction{expenses.count !== 1 ? 's' : ''} today
-                  </Typography>
+                <Box sx={{
+                  p: 2, borderRadius: 2.5, mb: 2.5,
+                  bgcolor: '#FFFBEB', border: '1px solid #FDE68A',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <Typography sx={{ color: '#92400E', fontSize: '0.8125rem', fontWeight: 500 }}>Total expenses today</Typography>
                   <Typography sx={{ fontWeight: 800, color: '#D97706', fontSize: '1.25rem' }}>
-                    {formatKES(expenses.totalAmount)}
+                    {formatCurrency(expenses.totalAmount)}
                   </Typography>
                 </Box>
                 <Box display="flex" flexWrap="wrap" gap={1}>
                   {expenses.byCategory.map((cat) => (
                     <Chip
                       key={cat.category}
-                      label={`${cat.category}: ${formatKES(cat.total)}`}
+                      label={`${cat.category}: ${formatCurrency(cat.total)}`}
                       size="small"
-                      sx={{ bgcolor: '#FFF7ED', color: '#B45309', fontWeight: 600, border: '1px solid #FED7AA' }}
+                      sx={{
+                        bgcolor: '#FFF7ED', color: '#B45309', fontWeight: 600,
+                        border: '1px solid #FED7AA', fontSize: '0.75rem',
+                      }}
                     />
                   ))}
                 </Box>
               </Box>
             ) : (
-              <Box sx={{ textAlign: 'center', py: 3 }}>
-                <Typography variant="body2" sx={{ color: '#94A3B8' }}>No expenses recorded today</Typography>
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Box sx={{
+                  width: 48, height: 48, borderRadius: '50%',
+                  bgcolor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  mx: 'auto', mb: 1.5,
+                }}>
+                  <TrendingDownIcon sx={{ color: '#94A3B8' }} />
+                </Box>
+                <Typography sx={{ color: '#94A3B8', fontSize: '0.8125rem' }}>No expenses recorded today</Typography>
               </Box>
             )}
           </Paper>

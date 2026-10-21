@@ -1,5 +1,6 @@
 using DukaPoS.Domain;
 using DukaPoS.Domain.Inventory;
+using DukaPoS.Domain.Identity;
 using DukaPoS.Messages.Inventory;
 using Marten;
 
@@ -9,6 +10,14 @@ public static class AdjustStockHandler
 {
     public static async Task<StockDepletedEvent?> Handle(AdjustStockCommand command, IDocumentSession session)
     {
+        var actor = await session.LoadAsync<User>(command.AdjustedBy);
+        if (actor == null || !actor.IsActive || actor.IsLocked)
+            throw new UnauthorizedAccessException("An active signed-in user is required to adjust stock.");
+        if (actor.Role is not (UserRole.Admin or UserRole.SuperAdmin) && !actor.Permissions.Contains("stock.adjust", StringComparer.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("You do not have permission to adjust stock.");
+        if (!Enum.TryParse<StockMovementReason>(command.Reason, true, out var reason))
+            throw new InvalidOperationException("Select a valid stock adjustment reason.");
+
         var stockLevel = await session.Query<StockLevel>()
             .FirstOrDefaultAsync(sl => sl.ProductId == command.ProductId && sl.BranchId == command.BranchId);
 
@@ -34,7 +43,7 @@ public static class AdjustStockHandler
             ProductId = command.ProductId,
             BranchId = command.BranchId,
             QuantityChange = command.QuantityChange,
-            Reason = StockMovementReason.Adjustment,
+            Reason = reason,
             Notes = command.Notes,
             CreatedBy = command.AdjustedBy,
         };

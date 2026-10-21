@@ -1,70 +1,71 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import Grid from '@mui/material/Grid2';
-import TextField from '@mui/material/TextField';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import dayjs from 'dayjs';
-import { useAuthStore } from '@/stores/auth-store';
-import IconButton from '@mui/material/IconButton';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import { reportsApi } from '@/lib/api';
-
-const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
+import { useEffect, useState } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Paper from "@mui/material/Paper";
+import Grid from "@mui/material/Grid2";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import TextField from "@mui/material/TextField";
+import dayjs from "dayjs";
+import { useAuthStore } from "@/stores/auth-store";
+import api, { reportsApi } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
+import { DPageHeader, DStatCard, DFeatureUpgradeHint } from "@/components";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import { downloadBlob, downloadCsv } from "@/lib/utils";
 
 interface TopProduct { productName: string; quantitySold: number; revenue: number; }
 
 export default function DailyReportPage() {
   const auth = useAuthStore();
-  const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [summary, setSummary] = useState<{ totalSales: number; totalRevenue: number; averageBasket: number; cashTotal: number; mpesaTotal: number } | null>(null);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [topProductsAllowed, setTopProductsAllowed] = useState(true);
 
-  useEffect(() => { auth.hydrate(); }, []);
+  useEffect(() => {
+    api.get('/api/subscriptions/current').then((response) => {
+      const features = response.data?.features as string[] | undefined;
+      if (features?.length) setTopProductsAllowed(features.includes('top_products_reports'));
+    }).catch(() => {});
+  }, []);
 
   const load = () => {
     if (!auth.user?.branchId) return;
     reportsApi.dailySummary(auth.user.branchId, date).then((r) => setSummary(r.data)).catch(() => {});
-    reportsApi.topProducts(auth.user.branchId, date, date, 10).then((r) => setTopProducts(r.data)).catch(() => {});
+    if (topProductsAllowed) reportsApi.topProducts(auth.user.branchId, date, date, 10).then((r) => setTopProducts(r.data)).catch(() => {});
   };
 
-  useEffect(() => { load(); }, [auth.user?.branchId, date, refreshKey]);
+  useEffect(() => { load(); }, [auth.user?.branchId, date, topProductsAllowed]);
 
   const cashPct = summary && summary.totalRevenue > 0 ? (summary.cashTotal / summary.totalRevenue) * 100 : 0;
   const mpesaPct = summary && summary.totalRevenue > 0 ? (summary.mpesaTotal / summary.totalRevenue) * 100 : 0;
+  const exportCsv = () => downloadCsv(`daily-report-${date}.csv`, [["Metric", "Value"], ["Sales", summary?.totalSales ?? 0], ["Revenue (KES)", summary?.totalRevenue ?? 0], ["Cash (KES)", summary?.cashTotal ?? 0], ["M-Pesa (KES)", summary?.mpesaTotal ?? 0], ["Average basket (KES)", summary?.averageBasket ?? 0], [], ["Top product", "Quantity sold", "Revenue (KES)"], ...topProducts.map((item) => [item.productName, item.quantitySold, item.revenue])]);
+  const exportPdf = async () => {
+    if (!auth.user?.branchId) return;
+    try { const response = await reportsApi.exportPdf("daily", auth.user.branchId, undefined, undefined, date); downloadBlob(`daily-report-${date}.pdf`, response.data); }
+    catch { /* API errors are handled by the shared request layer */ }
+  };
 
   return (
     <Box>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-        <Typography variant="h5">Daily Report</Typography>
-        <Box display="flex" gap={1} alignItems="center">
-          <IconButton onClick={() => setRefreshKey((k) => k + 1)} title="Refresh"><RefreshIcon /></IconButton>
-          <TextField type="date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        </Box>
-      </Box>
+      <DPageHeader
+        title="Daily Report"
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Reports" }, { label: "Daily" }]}
+        action={<Stack direction="row" spacing={1} alignItems="center"><TextField type="date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} /><Button variant="outlined" onClick={exportCsv} disabled={!summary}>CSV</Button><Button variant="contained" onClick={exportPdf} disabled={!summary}>PDF</Button></Stack>}
+      />
 
       {summary && (
         <Grid container spacing={2} mb={3}>
-          {[
-            { label: 'Total Sales', value: summary.totalSales },
-            { label: 'Revenue', value: formatKES(summary.totalRevenue) },
-            { label: 'Avg Basket', value: formatKES(summary.averageBasket) },
-          ].map((c) => (
-            <Grid key={c.label} size={{ xs: 12, sm: 4 }}>
-              <Paper sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">{c.label}</Typography>
-                <Typography variant="h5" fontWeight={800}>{c.value}</Typography>
-              </Paper>
-            </Grid>
-          ))}
+          <Grid size={{ xs: 12, sm: 4 }}><DStatCard label="Total Sales" value={summary.totalSales} color="#1565C0" /></Grid>
+          <Grid size={{ xs: 12, sm: 4 }}><DStatCard label="Revenue" value={formatCurrency(summary.totalRevenue)} color="#059669" /></Grid>
+          <Grid size={{ xs: 12, sm: 4 }}><DStatCard label="Avg Basket" value={formatCurrency(summary.averageBasket)} color="#7C3AED" /></Grid>
         </Grid>
       )}
 
@@ -77,19 +78,19 @@ export default function DailyReportPage() {
                 <Box mb={2}>
                   <Box display="flex" justifyContent="space-between" mb={0.5}>
                     <Typography variant="body2">Cash</Typography>
-                    <Typography variant="body2" fontWeight={700}>{formatKES(summary.cashTotal)}</Typography>
+                    <Typography variant="body2" fontWeight={700}>{formatCurrency(summary.cashTotal)}</Typography>
                   </Box>
-                  <Box sx={{ height: 8, borderRadius: 4, bgcolor: 'action.hover', overflow: 'hidden' }}>
-                    <Box sx={{ height: '100%', width: `${cashPct}%`, bgcolor: 'primary.main', borderRadius: 4 }} />
+                  <Box sx={{ height: 8, borderRadius: 4, bgcolor: "action.hover", overflow: "hidden" }}>
+                    <Box sx={{ height: "100%", width: `${cashPct}%`, bgcolor: "primary.main", borderRadius: 4 }} />
                   </Box>
                 </Box>
                 <Box>
                   <Box display="flex" justifyContent="space-between" mb={0.5}>
                     <Typography variant="body2">M-Pesa</Typography>
-                    <Typography variant="body2" fontWeight={700}>{formatKES(summary.mpesaTotal)}</Typography>
+                    <Typography variant="body2" fontWeight={700}>{formatCurrency(summary.mpesaTotal)}</Typography>
                   </Box>
-                  <Box sx={{ height: 8, borderRadius: 4, bgcolor: 'action.hover', overflow: 'hidden' }}>
-                    <Box sx={{ height: '100%', width: `${mpesaPct}%`, bgcolor: 'secondary.main', borderRadius: 4 }} />
+                  <Box sx={{ height: 8, borderRadius: 4, bgcolor: "action.hover", overflow: "hidden" }}>
+                    <Box sx={{ height: "100%", width: `${mpesaPct}%`, bgcolor: "secondary.main", borderRadius: 4 }} />
                   </Box>
                 </Box>
               </Box>
@@ -99,14 +100,16 @@ export default function DailyReportPage() {
         <Grid size={{ xs: 12, md: 7 }}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>Top Products</Typography>
+            {!topProductsAllowed ? <DFeatureUpgradeHint feature="top_products_reports" label="Top products report" /> : <>
             <Table size="small">
               <TableHead><TableRow><TableCell>Product</TableCell><TableCell align="right">Qty</TableCell><TableCell align="right">Revenue</TableCell></TableRow></TableHead>
               <TableBody>
                 {topProducts?.map((p, i) => (
-                  <TableRow key={i}><TableCell>{p.productName}</TableCell><TableCell align="right">{p.quantitySold}</TableCell><TableCell align="right">{formatKES(p.revenue)}</TableCell></TableRow>
+                  <TableRow key={i}><TableCell>{p.productName}</TableCell><TableCell align="right">{p.quantitySold}</TableCell><TableCell align="right">{formatCurrency(p.revenue)}</TableCell></TableRow>
                 ))}
               </TableBody>
             </Table>
+            </>}
           </Paper>
         </Grid>
       </Grid>

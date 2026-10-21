@@ -12,12 +12,12 @@ public static class GetSalesHistoryHandler
     {
         var salesQuery = session.Query<Sale>()
             .Where(s => s.BranchId == query.BranchId &&
-                        (s.Status == SaleStatus.Completed || s.Status == SaleStatus.Voided));
+                        (s.Status == SaleStatus.Completed || s.Status == SaleStatus.AwaitingPayment || s.Status == SaleStatus.Voided));
 
         if (query.From.HasValue)
-            salesQuery = salesQuery.Where(s => s.CompletedAt >= query.From.Value);
+            salesQuery = salesQuery.Where(s => (s.CompletedAt ?? s.StartedAt) >= query.From.Value);
         if (query.To.HasValue)
-            salesQuery = salesQuery.Where(s => s.CompletedAt <= query.To.Value);
+            salesQuery = salesQuery.Where(s => (s.CompletedAt ?? s.StartedAt) < query.To.Value);
 
         var totalCount = await salesQuery.CountAsync();
 
@@ -34,7 +34,7 @@ public static class GetSalesHistoryHandler
 
         var paymentLookup = payments
             .GroupBy(p => p.SaleId)
-            .ToDictionary(g => g.Key, g => g.First().Method.ToString());
+            .ToDictionary(g => g.Key, g => new { Paid = g.Sum(p => p.Amount), Method = string.Join(" + ", g.Select(p => p.Method.ToString()).Distinct()) });
 
         var dtos = sales.Select(s => new SalesSummaryDto(
             s.Id,
@@ -42,8 +42,10 @@ public static class GetSalesHistoryHandler
             s.Status.ToString(),
             s.CashierName,
             s.GrandTotal,
-            paymentLookup.GetValueOrDefault(s.Id, "N/A"),
-            s.CompletedAt ?? s.StartedAt
+            paymentLookup.GetValueOrDefault(s.Id, new { Paid = 0m, Method = "N/A" }).Paid,
+            paymentLookup.GetValueOrDefault(s.Id, new { Paid = 0m, Method = "N/A" }).Method,
+            s.CompletedAt ?? s.StartedAt,
+            s.CustomerName
         )).ToList();
 
         return new SalesHistoryResult(dtos, totalCount, query.Page, query.PageSize);

@@ -13,6 +13,11 @@ public static class AddLineItemHandler
         var sale = await session.LoadAsync<Sale>(command.SaleId)
             ?? throw new InvalidOperationException("Sale not found");
 
+        var product = await session.LoadAsync<Product>(command.ProductId)
+            ?? throw new InvalidOperationException("Product not found");
+        if (!product.IsActive)
+            throw new InvalidOperationException("Product is inactive");
+
         if (sale.Status != SaleStatus.Active)
             throw new InvalidOperationException("Sale is not active");
 
@@ -36,12 +41,12 @@ public static class AddLineItemHandler
         {
             Id = Guid.NewGuid(),
             ProductId = command.ProductId,
-            ProductName = command.ProductName,
-            Sku = command.Sku,
+            ProductName = product.Name,
+            Sku = product.Sku,
             Quantity = command.Quantity,
-            Unit = command.Unit,
-            UnitPrice = command.UnitPrice,
-            VatRatePercent = command.VatRatePercent,
+            Unit = product.Unit,
+            UnitPrice = product.SellingPrice,
+            VatRatePercent = (int)product.VatRate,
         };
 
         sale.AddLineItem(lineItem);

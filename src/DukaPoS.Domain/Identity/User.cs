@@ -8,10 +8,12 @@ public class User
     public string Email { get; set; } = default!;
     public string PasswordHash { get; set; } = default!;
     public string? PinHash { get; set; }
+    public List<string> Permissions { get; set; } = [];
     public string? CardTokenHash { get; set; }
     public UserRole Role { get; set; } = UserRole.Cashier;
     public bool IsActive { get; set; } = true;
     public Guid BranchId { get; set; }
+    public List<Guid> AssignedBranchIds { get; set; } = [];
     public bool IsLocked { get; set; }
     public DateTimeOffset? LockedAt { get; set; }
     public int FailedLoginAttempts { get; set; }

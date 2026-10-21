@@ -8,4 +8,5 @@ public record ApplyDiscountCommand(Guid SaleId, Guid? LineItemId, decimal Discou
 public record CompleteSaleCommand(Guid SaleId);
 public record VoidSaleCommand(Guid SaleId, Guid VoidedBy, string Reason);
 public record ParkSaleAsTabCommand(Guid SaleId, Guid ParkedBy, string ParkedByName, string? CustomerName, string? CustomerPhone, string? Notes);
+public record UpdateSaleCustomerCommand(Guid SaleId, string? CustomerName);
 public record RecallTabCommand(Guid TabId, Guid RecalledBy);

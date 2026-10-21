@@ -11,7 +11,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SnackbarProvider maxSnack={3} autoHideDuration={3000} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+      <SnackbarProvider maxSnack={3} autoHideDuration={3500} preventDuplicate anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         {children}
       </SnackbarProvider>
     </QueryClientProvider>

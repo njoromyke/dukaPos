@@ -12,7 +12,11 @@ public class Payment
     public string? MpesaReceiptNumber { get; set; }
     public string? MpesaPhone { get; set; }
     public string? MpesaTransactionId { get; set; }
+    public string? MpesaMerchantRequestId { get; set; }
     public string? CheckoutRequestId { get; set; }
+    public int? MpesaResultCode { get; set; }
+    public string? MpesaResultDescription { get; set; }
+    public DateTimeOffset? MpesaCallbackReceivedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ConfirmedAt { get; set; }
 }

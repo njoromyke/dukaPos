@@ -1,34 +1,30 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import Grid from '@mui/material/Grid2';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import dayjs from 'dayjs';
-import { useAuthStore } from '@/stores/auth-store';
-import IconButton from '@mui/material/IconButton';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import { salesApi } from '@/lib/api';
-import { useSnackbar } from 'notistack';
+import { useEffect, useState, useCallback } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Paper from "@mui/material/Paper";
+import Grid from "@mui/material/Grid2";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import dayjs from "dayjs";
+import { useAuthStore } from "@/stores/auth-store";
+import { salesApi } from "@/lib/api";
+import { useSnackbar } from "notistack";
+import { formatCurrency } from "@/lib/utils";
+import { DPageHeader } from "@/components";
 
 interface Tab {
   id: string; saleId: string; customerName?: string; customerPhone?: string;
   notes?: string; saleTotal: number; itemCount: number; parkedByName: string; parkedAt: string;
 }
 
-const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
-
 export default function TabsPage() {
   const auth = useAuthStore();
   const { enqueueSnackbar } = useSnackbar();
   const [tabs, setTabs] = useState<Tab[]>([]);
-
-  useEffect(() => { auth.hydrate(); }, []);
 
   const load = useCallback(async () => {
     if (!auth.user?.branchId) return;
@@ -42,19 +38,20 @@ export default function TabsPage() {
     if (!auth.user) return;
     try {
       await salesApi.recallTab(tabId, auth.user.id);
-      enqueueSnackbar('Tab recalled — go to POS to continue', { variant: 'success' });
+      enqueueSnackbar("Tab recalled — go to POS to continue", { variant: "success" });
       load();
-    } catch { enqueueSnackbar('Recall failed', { variant: 'error' }); }
+    } catch { enqueueSnackbar("Recall failed", { variant: "error" }); }
   };
 
   return (
     <Box>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-        <Typography variant="h5">Open Tabs ({tabs.length})</Typography>
-        <IconButton onClick={load} title="Refresh"><RefreshIcon /></IconButton>
-      </Box>
+      <DPageHeader
+        title={`Open Tabs (${tabs.length})`}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Sales" }, { label: "Tabs" }]}
+        action={<Button variant="outlined" onClick={load}>Refresh</Button>}
+      />
       {tabs.length === 0 ? (
-        <Paper sx={{ p: 5, textAlign: 'center' }}>
+        <Paper sx={{ p: 5, textAlign: "center" }}>
           <Typography color="text.secondary">No open tabs</Typography>
           <Typography variant="body2" color="text.secondary" mt={1}>Park a sale from the POS to create a tab</Typography>
         </Paper>
@@ -65,14 +62,12 @@ export default function TabsPage() {
               <Card variant="outlined">
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="start" mb={1}>
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      {t.customerName || `Tab by ${t.parkedByName}`}
-                    </Typography>
-                    <Chip label={formatKES(t.saleTotal)} size="small" color="primary" variant="outlined" />
+                    <Typography variant="subtitle1" fontWeight={700}>{t.customerName || `Tab by ${t.parkedByName}`}</Typography>
+                    <Chip label={formatCurrency(t.saleTotal)} size="small" color="primary" variant="outlined" />
                   </Box>
                   <Typography variant="body2" color="text.secondary">{t.itemCount} items</Typography>
                   <Typography variant="caption" color="text.secondary" display="block">
-                    Parked {dayjs(t.parkedAt).format('DD/MM HH:mm')} by {t.parkedByName}
+                    Parked {dayjs(t.parkedAt).format("DD/MM HH:mm")} by {t.parkedByName}
                   </Typography>
                   {t.notes && <Typography variant="caption" color="warning.main" mt={0.5} display="block">{t.notes}</Typography>}
                   <Button variant="contained" size="small" sx={{ mt: 2 }} onClick={() => handleRecall(t.id)}>Recall</Button>

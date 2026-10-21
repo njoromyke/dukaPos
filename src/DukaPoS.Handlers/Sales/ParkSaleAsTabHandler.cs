@@ -22,6 +22,7 @@ public static class ParkSaleAsTabHandler
         {
             Id = Guid.NewGuid(),
             SaleId = sale.Id,
+            BranchId = sale.BranchId,
             CustomerName = command.CustomerName,
             CustomerPhone = command.CustomerPhone,
             Notes = command.Notes,

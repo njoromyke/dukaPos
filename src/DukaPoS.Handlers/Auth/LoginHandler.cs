@@ -1,5 +1,6 @@
 using DukaPoS.Domain;
 using DukaPoS.Domain.Identity;
+using DukaPoS.Domain.Subscriptions;
 using DukaPoS.Domain.Tenancy;
 using DukaPoS.Infrastructure.Auth;
 using DukaPoS.Messages.Auth;
@@ -12,7 +13,6 @@ public static class LoginHandler
     public static async Task<LoginResult> Handle(
         LoginCommand command,
         IDocumentStore store,
-        IDocumentSession session,
         IJwtTokenService jwtService,
         IPasswordService passwordService)
     {
@@ -24,11 +24,16 @@ public static class LoginHandler
             return await HandleSuperAdminLogin(command, store, jwtService, passwordService);
         }
 
-        var tenant = await session.Query<Tenant>()
+        await using var lookupSession = store.LightweightSession();
+        var tenant = await lookupSession.Query<Tenant>()
             .FirstOrDefaultAsync(t => t.Slug == command.TenantSlug)
             ?? throw new InvalidOperationException("Tenant not found");
 
-        var user = await session.Query<User>()
+        if (!tenant.IsActive)
+            throw new InvalidOperationException("This store has been suspended. Contact support.");
+
+        await using var tenantSession = store.LightweightSession(tenant.Id.ToString());
+        var user = await tenantSession.Query<User>()
             .FirstOrDefaultAsync(u => u.Email == command.Email && u.TenantId == tenant.Id.ToString())
             ?? throw new InvalidOperationException("Invalid credentials");
 
@@ -54,26 +59,41 @@ public static class LoginHandler
             {
                 user.LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(30);
             }
-            session.Store(user);
-            await session.SaveChangesAsync();
+            tenantSession.Store(user);
+            await tenantSession.SaveChangesAsync();
             throw new InvalidOperationException("Invalid credentials");
         }
 
         user.FailedLoginAttempts = 0;
         user.LockoutEnd = null;
         user.LastLoginAt = DateTimeOffset.UtcNow;
-        session.Store(user);
-        await session.SaveChangesAsync();
+        tenantSession.Store(user);
+        await tenantSession.SaveChangesAsync();
 
         var branch = tenant.Branches.FirstOrDefault(b => b.Id == user.BranchId);
         var branchName = branch?.Name ?? "Default";
 
-        var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), tenant.Id.ToString(), user.BranchId);
+        var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), tenant.Id.ToString(), user.BranchId, user.Permissions);
         var refreshToken = jwtService.GenerateRefreshToken();
 
-        var userInfo = new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, branchName);
+        var userInfo = new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, branchName, user.Permissions);
 
-        return new LoginResult(token, refreshToken, userInfo, tenant.Id.ToString(), user.MustChangePassword);
+        SubscriptionInfo? subInfo = null;
+        var subscription = await lookupSession.Query<Subscription>()
+            .FirstOrDefaultAsync(s => s.TenantId == tenant.Id
+                && s.Status != SubscriptionStatus.Cancelled);
+        if (subscription != null)
+        {
+            var package = await lookupSession.LoadAsync<Package>(subscription.PackageId);
+            subInfo = new SubscriptionInfo(
+                subscription.Status.ToString(),
+                subscription.Tier.ToString(),
+                subscription.BillingCycle.ToString(),
+                subscription.ExpiresAt,
+                package?.Features ?? subscription.Features);
+        }
+
+        return new LoginResult(token, refreshToken, userInfo, tenant.Id.ToString(), user.MustChangePassword, subInfo);
     }
 
     private static async Task<LoginResult> HandleSuperAdminLogin(
@@ -98,10 +118,10 @@ public static class LoginHandler
             throw new InvalidOperationException("Invalid credentials");
         }
 
-        var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), "system", Guid.Empty);
+        var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), "system", Guid.Empty, user.Permissions);
         var refreshToken = jwtService.GenerateRefreshToken();
 
-        var userInfo = new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString(), Guid.Empty, "All Branches");
+        var userInfo = new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString(), Guid.Empty, "All Branches", user.Permissions);
 
         return new LoginResult(token, refreshToken, userInfo, "system");
     }

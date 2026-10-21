@@ -131,6 +131,7 @@ docker-compose.override.yml
 *.bak
 *.cache
 coverage/
+.dataprotection-keys/
 .nyc_output/
 .rider/
 rider/

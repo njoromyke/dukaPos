@@ -11,7 +11,7 @@ public static class DailySummaryHandler
 {
     public static async Task<DailySummaryResult> Handle(GetDailySummaryQuery query, IDocumentSession session)
     {
-        var dayStart = new DateTimeOffset(query.Date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var dayStart = new DateTimeOffset(query.Date.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(3)).ToUniversalTime();
         var dayEnd = dayStart.AddDays(1);
 
         var completedSales = await session.Query<Sale>()

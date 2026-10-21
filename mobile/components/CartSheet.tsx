@@ -1,8 +1,11 @@
 import React from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
-import {
-  Modal, Text, IconButton, Button, Divider, useTheme,
-} from 'react-native-paper';
+import { View, Text, FlatList, StyleSheet, ScrollView } from 'react-native';
+import DBottomSheet from '@/components/ui/DBottomSheet';
+import DIconButton from '@/components/ui/DIconButton';
+import DDivider from '@/components/ui/DDivider';
+import DButton from '@/components/ui/DButton';
+import DTextInput from '@/components/ui/DTextInput';
+import { useAppTheme } from '@/lib/theme';
 import type { SaleState, LineItem } from '@/stores';
 
 interface Props {
@@ -12,116 +15,124 @@ interface Props {
   onUpdateQuantity: (lineItemId: string, delta: number) => void;
   onRemoveItem: (lineItemId: string) => void;
   onPark: (customerName?: string) => void;
+  onCustomerNameChange: (customerName: string) => void;
+  onCustomerNameSave: (customerName: string) => void;
   onPay: () => void;
   formatKES: (n: number) => string;
 }
 
 export default function CartSheet({
-  visible, onDismiss, sale, onUpdateQuantity, onRemoveItem, onPark, onPay, formatKES,
+  visible, onDismiss, sale, onUpdateQuantity, onRemoveItem, onPark, onCustomerNameChange, onCustomerNameSave, onPay, formatKES,
 }: Props) {
-  const theme = useTheme();
+  const { colors } = useAppTheme();
 
   if (!sale) return null;
 
   const renderLineItem = ({ item }: { item: LineItem }) => (
     <View style={styles.lineItem}>
       <View style={{ flex: 1 }}>
-        <Text variant="bodyMedium" style={{ fontWeight: '600' }}>{item.productName}</Text>
-        <Text variant="labelSmall" style={{ color: theme.colors.outline }}>
+        <Text style={[styles.itemName, { color: colors.text }]}>{item.productName}</Text>
+        <Text style={[styles.itemMeta, { color: colors.textSecondary }]}>
           {formatKES(item.unitPrice)} x {item.quantity}
         </Text>
       </View>
       <View style={styles.qtyRow}>
-        <IconButton icon="minus" size={18} mode="outlined"
-          onPress={() => onUpdateQuantity(item.id, -1)} />
-        <Text variant="titleSmall" style={{ fontWeight: '800', minWidth: 28, textAlign: 'center' }}>
-          {item.quantity}
-        </Text>
-        <IconButton icon="plus" size={18} mode="outlined"
-          onPress={() => onUpdateQuantity(item.id, 1)} />
-        <IconButton icon="delete-outline" size={18} iconColor={theme.colors.error}
-          onPress={() => onRemoveItem(item.id)} />
+        <DIconButton icon="minus" size={18} outlined onPress={() => onUpdateQuantity(item.id, -1)} />
+        <Text style={[styles.qtyText, { color: colors.text }]}>{item.quantity}</Text>
+        <DIconButton icon="plus" size={18} outlined onPress={() => onUpdateQuantity(item.id, 1)} />
+        <DIconButton icon="delete-outline" size={18} color={colors.danger} onPress={() => onRemoveItem(item.id)} />
       </View>
-      <Text variant="bodyMedium" style={{ fontWeight: '700', minWidth: 80, textAlign: 'right' }}>
+      <Text style={[styles.lineTotal, { color: colors.text }]}>
         {formatKES(item.lineTotal)}
       </Text>
     </View>
   );
 
   return (
-    <Modal visible={visible} onDismiss={onDismiss}
-      contentContainerStyle={[styles.modal, { backgroundColor: theme.colors.surface }]}>
+    <DBottomSheet visible={visible} onDismiss={onDismiss}>
       <View style={styles.header}>
-        <Text variant="titleMedium" style={{ fontWeight: '700' }}>Cart</Text>
-        <Text variant="labelSmall" style={{ color: theme.colors.outline }}>
-          {sale.saleNumber}
-        </Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Cart</Text>
+        <Text style={[styles.saleNum, { color: colors.textSecondary }]}>{sale.saleNumber}</Text>
         <View style={{ flex: 1 }} />
-        <IconButton icon="close" size={20} onPress={onDismiss} />
+        <DIconButton icon="close" size={20} onPress={onDismiss} />
       </View>
 
-      <Divider />
+      <DDivider />
 
-      <FlatList
-        data={sale.lineItems}
-        keyExtractor={(li) => li.id}
-        renderItem={renderLineItem}
-        ItemSeparatorComponent={() => <Divider />}
-        style={{ maxHeight: 340 }}
-      />
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
+        <FlatList
+          data={sale.lineItems}
+          keyExtractor={(li) => li.id}
+          renderItem={renderLineItem}
+          ItemSeparatorComponent={DDivider}
+          scrollEnabled={false}
+        />
 
-      <Divider style={{ marginTop: 8 }} />
+        <DTextInput
+          label="Customer name (optional)"
+          value={sale.customerName || ''}
+          onChangeText={onCustomerNameChange}
+          onEndEditing={(event) => onCustomerNameSave(event.nativeEvent.text)}
+          dense
+          containerStyle={{ marginHorizontal: 16, marginTop: 8 }}
+        />
 
-      <View style={styles.totals}>
-        <View style={styles.totalRow}>
-          <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Subtotal</Text>
-          <Text variant="bodySmall">{formatKES(sale.subtotal)}</Text>
-        </View>
-        <View style={styles.totalRow}>
-          <Text variant="bodySmall" style={{ color: theme.colors.outline }}>VAT</Text>
-          <Text variant="bodySmall">{formatKES(sale.vatTotal)}</Text>
-        </View>
-        {sale.discountTotal > 0 && (
+        <DDivider style={{ marginTop: 8 }} />
+
+        <View style={styles.totals}>
           <View style={styles.totalRow}>
-            <Text variant="bodySmall" style={{ color: theme.colors.outline }}>Discount</Text>
-            <Text variant="bodySmall">-{formatKES(sale.discountTotal)}</Text>
+            <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Subtotal</Text>
+            <Text style={[styles.totalValue, { color: colors.text }]}>{formatKES(sale.subtotal)}</Text>
           </View>
-        )}
-        <Divider style={{ marginVertical: 6 }} />
-        <View style={styles.totalRow}>
-          <Text variant="titleMedium" style={{ fontWeight: '800' }}>TOTAL</Text>
-          <Text variant="titleMedium" style={{ fontWeight: '800', color: theme.colors.primary }}>
-            {formatKES(sale.grandTotal)}
-          </Text>
+          <View style={styles.totalRow}>
+            <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>VAT included</Text>
+            <Text style={[styles.totalValue, { color: colors.text }]}>{formatKES(sale.vatTotal)}</Text>
+          </View>
+          {sale.discountTotal > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Discount</Text>
+              <Text style={[styles.totalValue, { color: colors.text }]}>-{formatKES(sale.discountTotal)}</Text>
+            </View>
+          )}
+          <DDivider style={{ marginVertical: 6 }} />
+          <View style={styles.totalRow}>
+            <Text style={[styles.grandLabel, { color: colors.text }]}>TOTAL</Text>
+            <Text style={[styles.grandValue, { color: colors.primary }]}>{formatKES(sale.grandTotal)}</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.actions}>
-        <Button mode="outlined" icon="bookmark-outline" onPress={() => onPark()}
-          style={{ flex: 1 }}>
-          Park tab
-        </Button>
-        <Button mode="contained" icon="cash-register" onPress={onPay}
-          style={{ flex: 2 }}>
-          Pay {formatKES(sale.grandTotal)}
-        </Button>
-      </View>
-    </Modal>
+        <View style={styles.actions}>
+          <DButton mode="outlined" icon="bookmark-outline" onPress={() => onPark()} style={{ flex: 1 }}>
+            Park tab
+          </DButton>
+          <DButton mode="contained" icon="cash-register" onPress={onPay} style={{ flex: 2 }}>
+            Pay {formatKES(sale.grandTotal)}
+          </DButton>
+        </View>
+      </ScrollView>
+    </DBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  modal: {
-    marginHorizontal: 16, borderRadius: 16, maxHeight: '85%', overflow: 'hidden',
-  },
   header: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8,
   },
+  headerTitle: { fontSize: 15, fontWeight: '700' },
+  saleNum: { fontSize: 11, fontWeight: '600' },
   lineItem: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8,
   },
+  itemName: { fontSize: 14, fontWeight: '600' },
+  itemMeta: { fontSize: 11 },
   qtyRow: { flexDirection: 'row', alignItems: 'center' },
+  qtyText: { fontWeight: '800', fontSize: 14, minWidth: 28, textAlign: 'center' },
+  lineTotal: { fontWeight: '700', fontSize: 14, minWidth: 80, textAlign: 'right' },
   totals: { paddingHorizontal: 16, paddingVertical: 12 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  totalLabel: { fontSize: 12 },
+  totalValue: { fontSize: 12 },
+  grandLabel: { fontSize: 15, fontWeight: '800' },
+  grandValue: { fontSize: 15, fontWeight: '800' },
   actions: { flexDirection: 'row', gap: 10, padding: 16 },
 });

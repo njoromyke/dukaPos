@@ -20,9 +20,9 @@ public static class PinLoginHandler
         var user = users.FirstOrDefault(u => passwordService.Verify(command.Pin, u.PinHash!))
             ?? throw new InvalidOperationException("Invalid PIN");
 
-        var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), user.TenantId, user.BranchId);
+        var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), user.TenantId, user.BranchId, user.Permissions);
 
-        var userInfo = new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, "");
+        var userInfo = new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, "", user.Permissions);
 
         return new PinLoginResult(token, userInfo);
     }

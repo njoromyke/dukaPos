@@ -13,27 +13,23 @@ public class TenantResolutionMiddleware
 
     public async Task InvokeAsync(HttpContext context, TenantContext tenantContext)
     {
-        if (context.Request.Headers.TryGetValue(WellKnownConstants.TenantHeaderName, out var headerTenantId))
+        var tenantClaim = context.User.FindFirst("tenantId");
+        if (tenantClaim != null)
+        {
+            tenantContext.TenantId = tenantClaim.Value;
+        }
+        else if (context.Request.Headers.TryGetValue(WellKnownConstants.TenantHeaderName, out var headerTenantId))
         {
             tenantContext.TenantId = headerTenantId.ToString();
         }
         else
         {
-            // Try subdomain: {slug}.dukapos.co.ke
             var host = context.Request.Host.Host;
             var parts = host.Split('.');
             if (parts.Length >= 3 && parts[1].Equals("dukapos", StringComparison.OrdinalIgnoreCase))
             {
                 tenantContext.TenantId = parts[0];
             }
-        }
-
-        // Also check JWT claims for tenantId
-        if (string.IsNullOrEmpty(tenantContext.TenantId))
-        {
-            var tenantClaim = context.User.FindFirst("tenantId");
-            if (tenantClaim != null)
-                tenantContext.TenantId = tenantClaim.Value;
         }
 
         await _next(context);

@@ -1,6 +1,11 @@
 import React from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
-import { Modal, Text, IconButton, Button, Card, Divider, useTheme } from 'react-native-paper';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
+import DBottomSheet from '@/components/ui/DBottomSheet';
+import DIconButton from '@/components/ui/DIconButton';
+import DDivider from '@/components/ui/DDivider';
+import DButton from '@/components/ui/DButton';
+import DCard from '@/components/ui/DCard';
+import { useAppTheme } from '@/lib/theme';
 import type { Tab } from '@/stores';
 
 interface Props {
@@ -12,59 +17,53 @@ interface Props {
 }
 
 export default function TabsSheet({ visible, onDismiss, tabs, onRecall, formatKES }: Props) {
-  const theme = useTheme();
+  const { colors } = useAppTheme();
 
   const renderTab = ({ item }: { item: Tab }) => {
     const parkedTime = new Date(item.parkedAt);
     const timeStr = parkedTime.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
 
     return (
-      <Card mode="outlined" style={{ marginBottom: 8, borderRadius: 12 }}>
-        <Card.Content style={styles.tabCard}>
+      <DCard style={{ marginBottom: 8 }}>
+        <View style={styles.tabCard}>
           <View style={{ flex: 1 }}>
-            <Text variant="titleSmall" style={{ fontWeight: '700' }}>
+            <Text style={[styles.tabTitle, { color: colors.text }]}>
               {item.customerName || `Tab by ${item.parkedByName}`}
             </Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+            <Text style={[styles.tabMeta, { color: colors.textSecondary }]}>
               {item.itemCount} items · {formatKES(item.saleTotal)}
             </Text>
-            <Text variant="labelSmall" style={{ color: theme.colors.outline }}>
+            <Text style={[styles.tabTime, { color: colors.textSecondary }]}>
               Parked at {timeStr}
             </Text>
             {item.notes && (
-              <Text variant="labelSmall" style={{ color: theme.colors.tertiary, marginTop: 2 }}>
+              <Text style={[styles.tabNotes, { color: colors.accent }]}>
                 {item.notes}
               </Text>
             )}
           </View>
-          <Button mode="contained-tonal" icon="play" compact
-            onPress={() => onRecall(item.id)}>
+          <DButton mode="contained-tonal" icon="play" compact onPress={() => onRecall(item.id)}>
             Recall
-          </Button>
-        </Card.Content>
-      </Card>
+          </DButton>
+        </View>
+      </DCard>
     );
   };
 
   return (
-    <Modal visible={visible} onDismiss={onDismiss}
-      contentContainerStyle={[styles.modal, { backgroundColor: theme.colors.surface }]}>
+    <DBottomSheet visible={visible} onDismiss={onDismiss} maxHeight="75%">
       <View style={styles.header}>
-        <Text variant="titleMedium" style={{ fontWeight: '700' }}>
-          Open tabs ({tabs.length})
-        </Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Open tabs ({tabs.length})</Text>
         <View style={{ flex: 1 }} />
-        <IconButton icon="close" size={20} onPress={onDismiss} />
+        <DIconButton icon="close" size={20} onPress={onDismiss} />
       </View>
 
-      <Divider />
+      <DDivider />
 
       {tabs.length === 0 ? (
         <View style={styles.empty}>
-          <Text variant="bodyLarge" style={{ color: theme.colors.outline }}>No open tabs</Text>
-          <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 4 }}>
-            Park a sale to create a tab
-          </Text>
+          <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No open tabs</Text>
+          <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>Park a sale to create a tab</Text>
         </View>
       ) : (
         <FlatList
@@ -75,17 +74,21 @@ export default function TabsSheet({ visible, onDismiss, tabs, onRecall, formatKE
           style={{ maxHeight: 400 }}
         />
       )}
-    </Modal>
+    </DBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  modal: {
-    marginHorizontal: 16, borderRadius: 16, maxHeight: '75%', overflow: 'hidden',
-  },
   header: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8,
   },
+  headerTitle: { fontSize: 15, fontWeight: '700' },
   tabCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  tabTitle: { fontSize: 14, fontWeight: '700' },
+  tabMeta: { fontSize: 12, marginTop: 2 },
+  tabTime: { fontSize: 11, marginTop: 2 },
+  tabNotes: { fontSize: 11, marginTop: 2 },
   empty: { alignItems: 'center', padding: 40 },
+  emptyTitle: { fontSize: 16 },
+  emptyHint: { fontSize: 12, marginTop: 4 },
 });

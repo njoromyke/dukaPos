@@ -5,6 +5,7 @@ export interface UserInfo {
   role: string;
   branchId: string;
   branchName?: string;
+  permissions?: string[];
 }
 
 export function saveAuth(token: string, user: UserInfo, tenantId: string) {
@@ -16,7 +17,10 @@ export function saveAuth(token: string, user: UserInfo, tenantId: string) {
 export function clearAuth() {
   localStorage.removeItem('token');
   localStorage.removeItem('tenantId');
+  localStorage.removeItem('tenantSlug');
+  localStorage.removeItem('loginEmail');
   localStorage.removeItem('user');
+  try { sessionStorage.removeItem('dukapos_locked'); } catch {}
 }
 
 export function getToken(): string | null {

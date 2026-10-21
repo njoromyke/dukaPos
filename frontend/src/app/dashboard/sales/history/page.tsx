@@ -1,29 +1,26 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import TablePagination from '@mui/material/TablePagination';
-import TextField from '@mui/material/TextField';
-import Chip from '@mui/material/Chip';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Button from '@mui/material/Button';
-import dayjs from 'dayjs';
-import { useAuthStore } from '@/stores/auth-store';
-import IconButton from '@mui/material/IconButton';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import ReceiptIcon from '@mui/icons-material/ReceiptLong';
-import { salesApi, receiptApi } from '@/lib/api';
+import { useEffect, useState, useCallback, useRef } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import IconButton from "@mui/material/IconButton";
+import ReceiptIcon from "@mui/icons-material/ReceiptLong";
+import dayjs from "dayjs";
+import { useAuthStore } from "@/stores/auth-store";
+import { salesApi, receiptApi } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
+import { DPageHeader, DTable, DDateRange, DStatusChip } from "@/components";
+import type { DColumn } from "@/components";
 
 interface SaleRecord {
   id: string; saleNumber: string; status: string; cashierName: string;
@@ -31,30 +28,32 @@ interface SaleRecord {
   completedAt?: string; startedAt: string;
 }
 
-const formatKES = (n: number) => `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
-const statusColor: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
-  Completed: 'success', Active: 'warning', Parked: 'default', Voided: 'error', AwaitingPayment: 'warning',
-};
-
 export default function SalesHistoryPage() {
   const auth = useAuthStore();
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [from, setFrom] = useState(dayjs().format('YYYY-MM-DD'));
-  const [to, setTo] = useState(dayjs().format('YYYY-MM-DD'));
+  const [pageSize, setPageSize] = useState(10);
+  const [loading, setLoading] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [detail, setDetail] = useState<SaleRecord | null>(null);
-
-  useEffect(() => { auth.hydrate(); }, []);
+  const requestSequence = useRef(0);
 
   const load = useCallback(async () => {
     if (!auth.user?.branchId) return;
+    const requestId = ++requestSequence.current;
+    setLoading(true);
     try {
-      const res = await salesApi.getHistory(auth.user.branchId, from, to, page + 1, 20);
-      setSales(res.data.sales || res.data);
-      setTotal(res.data.totalCount || (res.data.sales || res.data).length);
+      const res = await salesApi.getHistory(auth.user.branchId, from || undefined, to || undefined, page + 1, pageSize);
+      const data = res.data;
+      const rows = data?.sales ?? data?.Sales ?? (Array.isArray(data) ? data : []);
+      if (requestId !== requestSequence.current) return;
+      setSales(rows);
+      setTotal(Number(data?.totalCount ?? data?.TotalCount ?? rows.length));
     } catch { /* */ }
-  }, [auth.user?.branchId, from, to, page]);
+    finally { if (requestId === requestSequence.current) setLoading(false); }
+  }, [auth.user?.branchId, from, to, page, pageSize]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -63,61 +62,55 @@ export default function SalesHistoryPage() {
     try {
       const res = await receiptApi.getBySale(s.id);
       const url = URL.createObjectURL(res.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `receipt-${s.saleNumber}.bin`;
-      a.click();
+      const a = document.createElement("a");
+      a.href = url; a.download = `receipt-${s.saleNumber}.bin`; a.click();
       URL.revokeObjectURL(url);
-    } catch { /* no receipt stored yet, generate one client-side */ }
+    } catch { /* */ }
   };
+
+  const openSaleDetails = async (sale: SaleRecord) => {
+    try {
+      const response = await salesApi.getSale(sale.id);
+      const data = response.data;
+      setDetail({
+        ...sale,
+        lineItems: data?.lineItems ?? data?.LineItems ?? [],
+      });
+    } catch {
+      setDetail({ ...sale, lineItems: [] });
+    }
+  };
+
+  const columns: DColumn<SaleRecord>[] = [
+    { field: "saleNumber", header: "Sale #", render: (s) => <Typography variant="body2" fontWeight={600}>{s.saleNumber}</Typography> },
+    { field: "cashierName", header: "Cashier" },
+    { field: "status", header: "Status", render: (s) => <DStatusChip status={s.status} /> },
+    { field: "grandTotal", header: "Total", align: "right", render: (s) => formatCurrency(s.grandTotal) },
+    { field: "completedAt", header: "Date", render: (s) => dayjs(s.completedAt || s.startedAt).format("DD/MM/YYYY HH:mm") },
+    {
+      field: "_receipt", header: "", width: 50, sortable: false,
+      render: (s) => s.status === "Completed" ? (
+        <IconButton size="small" title="Download receipt" onClick={(e) => handleReceipt(e, s)}><ReceiptIcon fontSize="small" /></IconButton>
+      ) : null,
+    },
+  ];
 
   return (
     <Box>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-        <Typography variant="h5">Sales History</Typography>
-        <IconButton onClick={load} title="Refresh"><RefreshIcon /></IconButton>
+      <DPageHeader
+        title="Sales History"
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Sales" }, { label: "History" }]}
+      />
+      <Box mb={2}>
+        <DDateRange from={from} to={to} onFromChange={(v) => { setFrom(v); setPage(0); }} onToChange={(v) => { setTo(v); setPage(0); }} />
       </Box>
-      <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <TextField label="From" type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(0); }} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField label="To" type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(0); }} slotProps={{ inputLabel: { shrink: true } }} />
-      </Paper>
-
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Sale #</TableCell>
-              <TableCell>Cashier</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Total</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell width={50}></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sales.map((s) => (
-              <TableRow key={s.id} hover sx={{ cursor: 'pointer' }} onClick={() => setDetail(s)}>
-                <TableCell><Typography variant="body2" fontWeight={600}>{s.saleNumber}</Typography></TableCell>
-                <TableCell>{s.cashierName}</TableCell>
-                <TableCell><Chip label={s.status} size="small" color={statusColor[s.status] || 'default'} variant="outlined" /></TableCell>
-                <TableCell align="right">{formatKES(s.grandTotal)}</TableCell>
-                <TableCell>{dayjs(s.completedAt || s.startedAt).format('DD/MM/YYYY HH:mm')}</TableCell>
-                <TableCell>
-                  {s.status === 'Completed' && (
-                    <IconButton size="small" title="Download receipt" onClick={(e) => handleReceipt(e, s)}>
-                      <ReceiptIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {sales.length === 0 && (
-              <TableRow><TableCell colSpan={5} align="center"><Typography color="text.secondary" py={4}>No sales found</Typography></TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-        <TablePagination component="div" count={total} page={page} rowsPerPage={20} rowsPerPageOptions={[20]} onPageChange={(_, p) => setPage(p)} />
-      </TableContainer>
+      <DTable
+        columns={columns} rows={sales} rowKey={(s) => s.id}
+        loading={loading} totalCount={total} page={page} pageSize={pageSize}
+        pageSizeOptions={[10, 20, 50]} onPageChange={setPage}
+        onPageSizeChange={(size) => { setPageSize(size); setPage(0); }} onRowClick={openSaleDetails}
+        emptyMessage="No sales found"
+      />
 
       <Dialog open={!!detail} onClose={() => setDetail(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Sale {detail?.saleNumber}</DialogTitle>
@@ -125,22 +118,17 @@ export default function SalesHistoryPage() {
           {detail && (
             <Box>
               <Typography variant="body2" color="text.secondary" mb={2}>
-                {detail.cashierName} &middot; {dayjs(detail.completedAt || detail.startedAt).format('DD/MM/YYYY HH:mm')} &middot; {detail.status}
+                {detail.cashierName} &middot; {dayjs(detail.completedAt || detail.startedAt).format("DD/MM/YYYY HH:mm")} &middot; {detail.status}
               </Typography>
               <Table size="small">
                 <TableHead><TableRow><TableCell>Item</TableCell><TableCell align="right">Qty</TableCell><TableCell align="right">Price</TableCell><TableCell align="right">Total</TableCell></TableRow></TableHead>
                 <TableBody>
                   {detail.lineItems.map((li, i) => (
-                    <TableRow key={i}>
-                      <TableCell>{li.productName}</TableCell>
-                      <TableCell align="right">{li.quantity}</TableCell>
-                      <TableCell align="right">{formatKES(li.unitPrice)}</TableCell>
-                      <TableCell align="right">{formatKES(li.lineTotal)}</TableCell>
-                    </TableRow>
+                    <TableRow key={i}><TableCell>{li.productName}</TableCell><TableCell align="right">{li.quantity}</TableCell><TableCell align="right">{formatCurrency(li.unitPrice)}</TableCell><TableCell align="right">{formatCurrency(li.lineTotal)}</TableCell></TableRow>
                   ))}
                 </TableBody>
               </Table>
-              <Typography variant="h6" fontWeight={800} textAlign="right" mt={2}>{formatKES(detail.grandTotal)}</Typography>
+              <Typography variant="h6" fontWeight={800} textAlign="right" mt={2}>{formatCurrency(detail.grandTotal)}</Typography>
             </Box>
           )}
         </DialogContent>

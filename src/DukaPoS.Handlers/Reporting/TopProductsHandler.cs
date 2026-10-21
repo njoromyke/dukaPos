@@ -9,14 +9,14 @@ public static class TopProductsHandler
 {
     public static async Task<IReadOnlyList<TopProductDto>> Handle(GetTopProductsQuery query, IDocumentSession session)
     {
-        var from = new DateTimeOffset(query.From.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
-        var to = new DateTimeOffset(query.To.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero);
+        var from = new DateTimeOffset(query.From.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(3)).ToUniversalTime();
+        var toExclusive = new DateTimeOffset(query.To.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(3)).ToUniversalTime();
 
         var sales = await session.Query<Sale>()
             .Where(s => s.BranchId == query.BranchId &&
                         s.Status == SaleStatus.Completed &&
                         s.CompletedAt >= from &&
-                        s.CompletedAt <= to)
+                        s.CompletedAt < toExclusive)
             .ToListAsync();
 
         var topProducts = sales

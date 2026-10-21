@@ -7,6 +7,7 @@ public class Sale
     public SaleStatus Status { get; set; } = SaleStatus.Active;
     public Guid CashierId { get; set; }
     public string CashierName { get; set; } = default!;
+    public string? CustomerName { get; set; }
     public Guid BranchId { get; set; }
     public List<SaleLineItem> LineItems { get; set; } = [];
     public decimal Subtotal { get; set; }
@@ -18,28 +19,55 @@ public class Sale
     public DateTimeOffset? VoidedAt { get; set; }
     public Guid? VoidedByUserId { get; set; }
     public string? VoidReason { get; set; }
+
     public void Recalculate()
     {
-        Subtotal = LineItems.Sum(li => li.LineTotal);
+        // UnitPrice is the VAT-inclusive selling price. Keep the pre-discount
+        // subtotal for display, then apply discounts once to get the payable total.
+        Subtotal = LineItems.Sum(li => li.Quantity * li.UnitPrice);
         VatTotal = LineItems.Sum(li => li.VatAmount);
         DiscountTotal = LineItems.Sum(li => li.Discount);
-        GrandTotal = Subtotal + VatTotal - DiscountTotal;
+        GrandTotal = Subtotal - DiscountTotal;
     }
+
     public void AddLineItem(SaleLineItem item)
     {
         var existing = LineItems.FirstOrDefault(li => li.ProductId == item.ProductId);
-        if (existing != null) { existing.Quantity += item.Quantity; existing.Recalculate(); }
-        else { item.Recalculate(); LineItems.Add(item); }
+        if (existing != null)
+        {
+            existing.Quantity += item.Quantity;
+            existing.Recalculate();
+        }
+        else
+        {
+            item.Recalculate();
+            LineItems.Add(item);
+        }
+
         Recalculate();
     }
-    public void RemoveLineItem(Guid lineItemId) { LineItems.RemoveAll(li => li.Id == lineItemId); Recalculate(); }
+
+    public void RemoveLineItem(Guid lineItemId)
+    {
+        LineItems.RemoveAll(li => li.Id == lineItemId);
+        Recalculate();
+    }
+
     public void UpdateLineItemQuantity(Guid lineItemId, decimal newQuantity)
     {
         var item = LineItems.FirstOrDefault(li => li.Id == lineItemId) ?? throw new InvalidOperationException("Line item not found");
-        if (newQuantity <= 0) { RemoveLineItem(lineItemId); return; }
-        item.Quantity = newQuantity; item.Recalculate(); Recalculate();
+        if (newQuantity <= 0)
+        {
+            RemoveLineItem(lineItemId);
+            return;
+        }
+
+        item.Quantity = newQuantity;
+        item.Recalculate();
+        Recalculate();
     }
 }
+
 public class SaleLineItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -53,6 +81,7 @@ public class SaleLineItem
     public decimal VatAmount { get; set; }
     public decimal Discount { get; set; }
     public decimal LineTotal { get; set; }
+
     public void Recalculate()
     {
         var gross = Quantity * UnitPrice;
@@ -60,10 +89,12 @@ public class SaleLineItem
         VatAmount = VatRatePercent > 0 ? Math.Round(LineTotal * VatRatePercent / (100m + VatRatePercent), 2) : 0;
     }
 }
+
 public class Tab
 {
     public Guid Id { get; set; }
     public Guid SaleId { get; set; }
+    public Guid BranchId { get; set; }
     public string? CustomerName { get; set; }
     public string? CustomerPhone { get; set; }
     public string? Notes { get; set; }

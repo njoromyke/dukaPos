@@ -1,18 +1,17 @@
-import { View, Pressable, StyleSheet } from 'react-native';
-import { Text } from 'react-native-paper';
+import { View, Pressable, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withSequence, interpolate, Extrapolation,
 } from 'react-native-reanimated';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Colors } from '@/constants/Colors';
+import { router, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTheme } from '@/lib/theme';
 
 const ICONS: Record<string, string> = {
   index: 'cart',
   inventory: 'package-variant',
+  sales: 'receipt-text-outline',
   expenses: 'cash-minus',
   reports: 'chart-bar',
   settings: 'cog-outline',
@@ -21,6 +20,7 @@ const ICONS: Record<string, string> = {
 const LABELS: Record<string, string> = {
   index: 'POS',
   inventory: 'Inventory',
+  sales: 'Sales',
   expenses: 'Expenses',
   reports: 'Reports',
   settings: 'Settings',
@@ -37,6 +37,7 @@ function TabItem({
   onPress: () => void;
   onLongPress: () => void;
 }) {
+  const { colors } = useAppTheme();
   const scale = useSharedValue(1);
   const progress = useSharedValue(isFocused ? 1 : 0);
 
@@ -63,17 +64,16 @@ function TabItem({
     transform: [{ scale: progress.value }],
   }));
 
-  const iconColor = isFocused ? Colors.light.primary : Colors.light.tabBarInactive;
+  const iconColor = isFocused ? colors.primary : colors.textSecondary;
   const icon = ICONS[routeName] || 'circle';
   const label = LABELS[routeName] || routeName;
 
   return (
     <Pressable
       onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         scale.value = withSequence(
-          withSpring(0.85, { damping: 15, stiffness: 400 }),
-          withSpring(1, { damping: 12, stiffness: 200 }),
+          withSpring(0.9, { damping: 20, stiffness: 400 }),
+          withSpring(1, { damping: 15, stiffness: 200 }),
         );
         onPress();
       }}
@@ -95,33 +95,44 @@ function TabItem({
       >
         {label}
       </Text>
-      <Animated.View style={[styles.dot, animatedDot, { backgroundColor: Colors.light.primary }]} />
+      <Animated.View style={[styles.dot, animatedDot, { backgroundColor: colors.primary }]} />
     </Pressable>
   );
 }
 
-export default function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+type AnimatedTabBarProps = {
+  state: { index: number; routes: Array<{ key: string; name: string }> };
+  descriptors: Record<string, unknown>;
+  emitter?: any;
+  navigation?: any;
+};
+
+export default function AnimatedTabBar({ state, descriptors, emitter, navigation }: AnimatedTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8), backgroundColor: colors.surface, borderTopColor: colors.border }]}>
       <View style={styles.bar}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
 
           const onPress = () => {
-            const event = navigation.emit({
+            const event = (emitter ?? navigation)?.emit?.({
               type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
             });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+            if (!isFocused && !event?.defaultPrevented) {
+              const destination = route.name === 'index'
+                ? '/(tabs)'
+                : `/(tabs)/${route.name}`;
+              router.navigate(destination as Href);
             }
           };
 
           const onLongPress = () => {
-            navigation.emit({ type: 'tabLongPress', target: route.key });
+            (emitter ?? navigation)?.emit?.({ type: 'tabLongPress', target: route.key });
           };
 
           return (
@@ -141,14 +152,6 @@ export default function AnimatedTabBar({ state, descriptors, navigation }: Botto
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 8,
   },
   bar: {
     flexDirection: 'row',

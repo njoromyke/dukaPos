@@ -69,7 +69,7 @@ public class ReceiptPrinter : IReceiptPrinter
     private static void PrintTotals(Stream s, ReceiptData data)
     {
         WriteRow(s, "Subtotal:", $"KES {data.Subtotal:F2}");
-        WriteRow(s, "VAT:", $"KES {data.VatTotal:F2}");
+        WriteRow(s, "VAT included:", $"KES {data.VatTotal:F2}");
 
         if (data.DiscountTotal > 0)
         {

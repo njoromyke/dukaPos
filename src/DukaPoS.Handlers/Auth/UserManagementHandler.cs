@@ -28,11 +28,53 @@ public static class CreateUserHandler
             PinHash = !string.IsNullOrEmpty(command.Pin) ? passwordService.Hash(command.Pin) : null,
             Role = Enum.Parse<UserRole>(command.Role, true),
             BranchId = command.BranchId,
+            AssignedBranchIds = (command.BranchIds ?? [command.BranchId]).Append(command.BranchId).Distinct().ToList(),
         };
 
         session.Store(user);
 
-        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt);
+        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId, user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt, user.TenantId, user.Permissions, user.AssignedBranchIds);
+    }
+}
+
+public static class UpdateUserPermissionsHandler
+{
+    private static readonly HashSet<string> AllowedPermissions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "stock.adjust", "inventory.manage", "sales.void", "users.manage", "reports.export", "admin.portal.view", "branch.switch"
+    };
+
+    public static async Task<UserDto> Handle(UpdateUserPermissionsCommand command, IDocumentSession session)
+    {
+        if (command.Permissions.Any(permission => !AllowedPermissions.Contains(permission)))
+            throw new InvalidOperationException("One or more requested permissions are not supported.");
+        var user = await session.LoadAsync<User>(command.UserId)
+            ?? throw new InvalidOperationException("User not found");
+        user.Permissions = command.Permissions.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        session.Store(user);
+        await session.SaveChangesAsync();
+        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId,
+            user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt, user.TenantId, user.Permissions);
+    }
+}
+
+public static class UpdateUserBranchAssignmentsHandler
+{
+    public static async Task<UserDto> Handle(UpdateUserBranchAssignmentsCommand command, IDocumentSession session)
+    {
+        var branchIds = command.BranchIds.Distinct().ToList();
+        if (branchIds.Count == 0 || !branchIds.Contains(command.PrimaryBranchId))
+            throw new InvalidOperationException("Assign at least one branch and select an assigned primary branch.");
+
+        var user = await session.LoadAsync<User>(command.UserId)
+            ?? throw new InvalidOperationException("User not found");
+        user.AssignedBranchIds = branchIds;
+        user.BranchId = command.PrimaryBranchId;
+        session.Store(user);
+        await session.SaveChangesAsync();
+
+        return new UserDto(user.Id, user.FullName, user.Email, user.Role.ToString(), user.BranchId,
+            user.IsActive, user.IsLocked, user.MustChangePassword, user.CreatedAt, user.TenantId, user.Permissions, user.AssignedBranchIds);
     }
 }
 
@@ -97,9 +139,14 @@ public static class ChangePasswordHandler
 {
     public static async Task Handle(
         ChangePasswordCommand command,
-        IDocumentSession session,
+        IDocumentStore store,
         IPasswordService passwordService)
     {
+        await using var session = string.IsNullOrWhiteSpace(command.TenantId) ||
+                                  command.TenantId.Equals("system", StringComparison.OrdinalIgnoreCase)
+            ? store.LightweightSession()
+            : store.LightweightSession(command.TenantId);
+
         var user = await session.LoadAsync<User>(command.UserId)
             ?? throw new InvalidOperationException("User not found");
 
@@ -121,14 +168,15 @@ public static class GetUsersHandler
         var usersQuery = session.Query<User>().Where(u => u.IsActive);
 
         if (query.BranchId.HasValue)
-            usersQuery = usersQuery.Where(u => u.BranchId == query.BranchId.Value);
+            usersQuery = usersQuery.Where(u => u.BranchId == query.BranchId.Value || u.AssignedBranchIds.Contains(query.BranchId.Value));
 
         var users = await usersQuery
             .OrderBy(u => u.FullName)
             .ToListAsync();
 
         return users.Select(u => new UserDto(
-            u.Id, u.FullName, u.Email, u.Role.ToString(), u.BranchId, u.IsActive, u.IsLocked, u.MustChangePassword, u.CreatedAt
+            u.Id, u.FullName, u.Email, u.Role.ToString(), u.BranchId, u.IsActive, u.IsLocked,
+            u.MustChangePassword, u.CreatedAt, u.TenantId, u.Permissions, u.AssignedBranchIds
         )).ToList();
     }
 }

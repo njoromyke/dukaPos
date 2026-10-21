@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
-import { Text } from 'react-native-paper';
+import { View, Text, StyleSheet, Pressable, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { inventoryApi, salesApi } from '@/lib/api';
 import { usePosStore, useAuthStore } from '@/stores';
+import { notification, NotificationFeedbackType } from '@/lib/haptics';
 
 export default function ScannerScreen() {
   const insets = useSafeAreaInsets();
@@ -16,19 +15,21 @@ export default function ScannerScreen() {
   const pos = usePosStore();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
-    if (scanned) return;
+    if (scanned || adding) return;
     setScanned(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setAdding(true);
+    notification(NotificationFeedbackType.Success);
     setResult(data);
 
     try {
-      const res = await inventoryApi.getByBarcode(data);
+      const branchId = auth.user?.branchId || '';
+      const res = await inventoryApi.getByBarcode(data, branchId);
       const product = res.data;
       if (product) {
-        const branchId = auth.user?.branchId || '';
         const cashierId = auth.user?.id || '';
         const cashierName = auth.user?.name || '';
 
@@ -49,10 +50,15 @@ export default function ScannerScreen() {
           vatRatePercent: product.vatRate >= 0 ? product.vatRate : 0,
         });
         pos.setCurrentSale(addRes.data);
-        router.back();
+        setResult(`${product.name} added · scan another item`);
+        setAdding(false);
+      } else {
+        setResult(`No product found for ${data}`);
+        setAdding(false);
       }
     } catch {
-      setTimeout(() => setScanned(false), 2000);
+      setResult('Could not add item. Try scanning again.');
+      setAdding(false);
     }
   };
 
@@ -72,15 +78,15 @@ export default function ScannerScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <CameraView
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         barcodeScannerSettings={{
           barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'qr'],
         }}
       />
 
-      {/* Overlay */}
       <View style={[styles.topOverlay, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => router.back()} style={styles.closeBtn}>
           <MaterialCommunityIcons name="close" size={24} color="#FFF" />
@@ -99,9 +105,19 @@ export default function ScannerScreen() {
       <Animated.View entering={FadeInDown.delay(300)} style={styles.bottomHint}>
         <MaterialCommunityIcons name="barcode-scan" size={20} color="#FFF" />
         <Text style={styles.hintText}>
-          {scanned ? `Scanned: ${result}` : 'Point camera at a barcode'}
+          {scanned ? result : 'Point camera at a barcode · scan again to add another'}
         </Text>
       </Animated.View>
+      {scanned && !adding && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => { setResult(null); setScanned(false); }}
+          style={[styles.nextScan, { bottom: insets.bottom + 20 }]}
+        >
+          <MaterialCommunityIcons name="barcode-scan" size={20} color="#FFF" />
+          <Text style={styles.nextScanText}>Scan next item</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -149,4 +165,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14, borderRadius: 14,
   },
   hintText: { color: '#FFF', fontSize: 14, fontWeight: '500' },
+  nextScan: {
+    position: 'absolute', bottom: 20, alignSelf: 'center', flexDirection: 'row',
+    alignItems: 'center', gap: 8, backgroundColor: '#0EA5E9',
+    paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14,
+  },
+  nextScanText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });

@@ -12,6 +12,7 @@ import Divider from '@mui/material/Divider';
 import { tenantSettingsApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { useSnackbar } from 'notistack';
+import { DPageHeader } from '@/components';
 
 interface TenantSettings {
   maxLoginAttempts: number;
@@ -43,8 +44,6 @@ export default function TenantSettingsPage() {
   const [settings, setSettings] = useState<TenantSettings>(defaults);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { auth.hydrate(); }, []);
-
   useEffect(() => {
     const tenantId = typeof window !== 'undefined' ? localStorage.getItem('tenantId') : null;
     if (!tenantId) return;
@@ -66,10 +65,10 @@ export default function TenantSettingsPage() {
     setSettings((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <Box>
-      <Typography variant="h5" mb={3}>Tenant Rules & Settings</Typography>
+    <Box sx={{ minHeight: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
+      <DPageHeader title="Tenant Rules & Settings" breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Settings' }, { label: 'Tenant' }]} />
 
-      <Paper sx={{ p: 3, maxWidth: 600 }}>
+      <Paper sx={{ p: { xs: 2, md: 4 }, width: '100%', flex: 1 }}>
         <Typography variant="subtitle1" fontWeight={700} mb={2}>Login & Security</Typography>
         <Box display="flex" flexDirection="column" gap={2}>
           <TextField label="Max Login Attempts" type="number" value={settings.maxLoginAttempts}

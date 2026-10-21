@@ -46,7 +46,7 @@ public static class GetAuditLogsHandler
         if (query.From.HasValue)
             q = q.Where(a => a.CreatedAt >= query.From.Value);
         if (query.To.HasValue)
-            q = q.Where(a => a.CreatedAt <= query.To.Value);
+            q = q.Where(a => a.CreatedAt < query.To.Value);
 
         var total = await q.CountAsync();
         var items = await q.OrderByDescending(a => a.CreatedAt)

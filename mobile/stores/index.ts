@@ -1,12 +1,23 @@
 import { create } from 'zustand';
 
+export interface MobileUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  branchId: string;
+  branchName?: string;
+  permissions?: string[];
+}
+
 // ── Auth Store ──
 interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
-  user: { id: string; name: string; email: string; role: string; branchId: string } | null;
+  user: MobileUser | null;
   tenantId: string | null;
-  login: (token: string, user: AuthState['user'], tenantId: string) => void;
+  features: string[];
+  login: (token: string, user: AuthState['user'], tenantId: string, features?: string[]) => void;
   logout: () => void;
 }
 
@@ -15,8 +26,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   user: null,
   tenantId: null,
-  login: (token, user, tenantId) => set({ isAuthenticated: true, token, user, tenantId }),
-  logout: () => set({ isAuthenticated: false, token: null, user: null, tenantId: null }),
+  features: [],
+  login: (token, user, tenantId, features = []) => set({ isAuthenticated: true, token, user, tenantId, features }),
+  logout: () => set({ isAuthenticated: false, token: null, user: null, tenantId: null, features: [] }),
+}));
+
+interface ThemeState {
+  mode: 'light' | 'dark';
+  setMode: (mode: 'light' | 'dark') => void;
+}
+
+export const useThemeStore = create<ThemeState>((set) => ({
+  mode: 'light',
+  setMode: (mode) => set({ mode }),
 }));
 
 // ── POS Store ──
@@ -43,6 +65,8 @@ export interface SaleState {
   vatTotal: number;
   discountTotal: number;
   grandTotal: number;
+  paidAmount?: number;
+  customerName?: string | null;
 }
 
 export interface Tab {
@@ -75,6 +99,17 @@ export const usePosStore = create<PosState>((set) => ({
   setLocked: (locked) => set({ isLocked: locked }),
 }));
 
+// ── Haptics Store ──
+interface HapticsState {
+  enabled: boolean;
+  setEnabled: (enabled: boolean) => void;
+}
+
+export const useHapticsStore = create<HapticsState>((set) => ({
+  enabled: true,
+  setEnabled: (enabled) => set({ enabled }),
+}));
+
 // ── Product Store ──
 export interface Product {
   id: string;
@@ -87,6 +122,8 @@ export interface Product {
   vatRate: number;
   isWeighed: boolean;
   stockQuantity: number;
+  imageUrl?: string | null;
+  imageData?: string | null;
 }
 
 export interface Category {

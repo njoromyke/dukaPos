@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, FlatList, StyleSheet, RefreshControl, Alert } from 'react-native';
-import {
-  Text, FAB, Portal, Dialog, Button, TextInput, Chip, IconButton,
-} from 'react-native-paper';
+import { View, Text, FlatList, StyleSheet, RefreshControl, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useAuthStore } from '@/stores';
 import { expensesApi } from '@/lib/api';
 import ScreenHeader from '@/components/ui/ScreenHeader';
+import DButton from '@/components/ui/DButton';
+import DTextInput from '@/components/ui/DTextInput';
+import DChip from '@/components/ui/DChip';
+import DFab from '@/components/ui/DFab';
+import DDialog from '@/components/ui/DDialog';
+import DIconButton from '@/components/ui/DIconButton';
 import AnimatedCard from '@/components/ui/AnimatedCard';
-import { Colors } from '@/constants/Colors';
+import FeatureUpgradeHint from '@/components/FeatureUpgradeHint';
+import { useAppTheme } from '@/lib/theme';
 
 const CATEGORIES = ['Rent', 'Utilities', 'Salaries', 'Supplies', 'Transport', 'Marketing', 'Maintenance', 'Other'];
 
@@ -35,6 +38,7 @@ interface Expense {
 }
 
 export default function ExpensesScreen() {
+  const { colors } = useAppTheme();
   const auth = useAuthStore();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
@@ -104,15 +108,15 @@ export default function ExpensesScreen() {
             <MaterialCommunityIcons name={catIcon as any} size={20} color={catColor} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.expenseDesc}>{item.description}</Text>
-            <Text style={styles.expenseMeta}>{item.category} - {item.date}</Text>
+            <Text style={[styles.expenseDesc, { color: colors.text }]}>{item.description}</Text>
+            <Text style={[styles.expenseMeta, { color: colors.textSecondary }]}>{item.category} - {item.date}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.expenseAmount}>{formatKES(item.amount)}</Text>
-            <IconButton
+            <Text style={[styles.expenseAmount, { color: colors.text }]}>{formatKES(item.amount)}</Text>
+            <DIconButton
               icon="delete-outline"
               size={16}
-              iconColor={Colors.light.danger}
+              color={colors.danger}
               onPress={() => handleDelete(item.id)}
               style={{ margin: 0 }}
             />
@@ -123,145 +127,122 @@ export default function ExpensesScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScreenHeader
         title="Expenses"
         rightAction={
-          <Animated.View entering={FadeIn.delay(300)} style={styles.totalBadge}>
-            <Text style={styles.totalText}>{formatKES(total)}</Text>
-          </Animated.View>
+          <View style={[styles.totalBadge, { backgroundColor: colors.accentLight }]}>
+            <Text style={[styles.totalText, { color: colors.accent }]}>{formatKES(total)}</Text>
+          </View>
         }
       />
 
-      <FlatList
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        data={[null, ...CATEGORIES]}
-        keyExtractor={(item) => item || 'all'}
-        style={styles.catList}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-        renderItem={({ item }) => (
-          <Chip
-            compact
-            selected={filterCat === item}
-            onPress={() => setFilterCat(item)}
-            style={[
-              styles.chip,
-              filterCat === item && styles.chipActive,
-            ]}
-            textStyle={{
-              fontSize: 12,
-              color: filterCat === item ? Colors.light.primary : '#64748B',
-            }}
-          >
-            {item || 'All'}
-          </Chip>
-        )}
-      />
+      {auth.features.length > 0 && !auth.features.includes('expense_tracking') ? (
+        <View style={{ padding: 16 }}>
+          <FeatureUpgradeHint feature="expense_tracking" label="Expense tracking" />
+        </View>
+      ) : (
+        <>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={[null, ...CATEGORIES]}
+            keyExtractor={(item) => item || 'all'}
+            style={styles.catList}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+            renderItem={({ item }) => (
+              <DChip
+                compact
+                label={item || 'All'}
+                selected={filterCat === item}
+                onPress={() => setFilterCat(item)}
+              />
+            )}
+          />
 
-      <FlatList
-        data={expenses}
-        keyExtractor={(item) => item.id}
-        renderItem={renderExpense}
-        contentContainerStyle={{ padding: 16, paddingBottom: 90 }}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-        ListEmptyComponent={
-          <Animated.View entering={FadeIn.delay(200)} style={styles.empty}>
-            <MaterialCommunityIcons name="cash-off" size={48} color="#CBD5E1" />
-            <Text style={styles.emptyText}>No expenses recorded</Text>
-          </Animated.View>
-        }
-      />
+          <FlatList
+            data={expenses}
+            keyExtractor={(item) => item.id}
+            renderItem={renderExpense}
+            contentContainerStyle={{ padding: 16, paddingBottom: 90 }}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <MaterialCommunityIcons name="cash-off" size={48} color={colors.border} />
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No expenses recorded</Text>
+              </View>
+            }
+          />
+        </>
+      )}
 
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => setDialogVisible(true)} />
+      {(!auth.features.length || auth.features.includes('expense_tracking')) && (
+        <DFab icon="plus" onPress={() => setDialogVisible(true)} />
+      )}
 
-      <Portal>
-        <Dialog visible={dialogVisible} onDismiss={() => setDialogVisible(false)}
-          style={styles.dialog}>
-          <Dialog.Title style={styles.dialogTitle}>Add Expense</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label="Description"
-              value={description}
-              onChangeText={setDescription}
-              mode="outlined"
-              style={styles.input}
-              outlineStyle={{ borderColor: '#E2E8F0' }}
-              theme={{ roundness: 12 }}
-            />
-            <TextInput
-              label="Amount (KES)"
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="numeric"
-              mode="outlined"
-              style={styles.input}
-              outlineStyle={{ borderColor: '#E2E8F0' }}
-              theme={{ roundness: 12 }}
-            />
-            <Text style={styles.catLabel}>Category</Text>
-            <View style={styles.catGrid}>
-              {CATEGORIES.map((c) => (
-                <Chip
-                  key={c}
-                  selected={category === c}
-                  onPress={() => setCategory(c)}
-                  compact
-                  style={[
-                    styles.chip,
-                    category === c && { backgroundColor: (CATEGORY_COLORS[c] || '#64748B') + '15' },
-                  ]}
-                  textStyle={{ fontSize: 12 }}
-                >
-                  {c}
-                </Chip>
-              ))}
-            </View>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDialogVisible(false)} textColor="#64748B">Cancel</Button>
-            <Button
+      <DDialog
+        visible={dialogVisible}
+        onDismiss={() => setDialogVisible(false)}
+        title="Add Expense"
+        actions={
+          <>
+            <DButton onPress={() => setDialogVisible(false)} textColor={colors.textSecondary}>Cancel</DButton>
+            <DButton
               mode="contained"
               onPress={handleAdd}
               disabled={!description || !amount}
-              style={{ borderRadius: 10 }}
-              buttonColor={Colors.light.primary}
             >
               Add
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+            </DButton>
+          </>
+        }
+      >
+        <DTextInput
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          containerStyle={{ marginBottom: 14 }}
+        />
+        <DTextInput
+          label="Amount (KES)"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="numeric"
+          containerStyle={{ marginBottom: 14 }}
+        />
+        <Text style={[styles.catLabel, { color: colors.textSecondary }]}>Category</Text>
+        <View style={styles.catGrid}>
+          {CATEGORIES.map((c) => (
+            <DChip
+              key={c}
+              label={c}
+              selected={category === c}
+              onPress={() => setCategory(c)}
+              compact
+            />
+          ))}
+        </View>
+      </DDialog>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
+  container: { flex: 1 },
   totalBadge: {
-    backgroundColor: Colors.light.accentLight,
     paddingHorizontal: 14, paddingVertical: 6,
     borderRadius: 20,
   },
-  totalText: { fontSize: 14, fontWeight: '800', color: '#D97706' },
+  totalText: { fontSize: 14, fontWeight: '800' },
   catList: { maxHeight: 48, marginTop: 12 },
-  chip: { backgroundColor: '#FFF', borderColor: '#E2E8F0', borderWidth: 1 },
-  chipActive: { backgroundColor: Colors.light.primaryLight, borderColor: Colors.light.primary },
   expenseRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   catIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  expenseDesc: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
-  expenseMeta: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  expenseAmount: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  expenseDesc: { fontSize: 14, fontWeight: '600' },
+  expenseMeta: { fontSize: 12, marginTop: 2 },
+  expenseAmount: { fontSize: 16, fontWeight: '800' },
   empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
-  emptyText: { color: '#94A3B8', fontSize: 16 },
-  fab: {
-    position: 'absolute', right: 16, bottom: 24,
-    borderRadius: 16, backgroundColor: Colors.light.accent,
-  },
-  dialog: { borderRadius: 20, backgroundColor: '#FFF' },
-  dialogTitle: { fontWeight: '700' },
-  input: { marginBottom: 14, backgroundColor: '#FFF' },
-  catLabel: { fontSize: 13, color: '#64748B', marginBottom: 8 },
+  emptyText: { fontSize: 16 },
+  catLabel: { fontSize: 13, marginBottom: 8 },
   catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
 });

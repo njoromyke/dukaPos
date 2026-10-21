@@ -113,6 +113,11 @@ public enum AuditEventType
     TerminalUnlocked,
     MpesaStkPush,
     MpesaCallback,
+    SubscriptionCreated,
+    SubscriptionRenewed,
+    SubscriptionExpired,
+    SubscriptionCancelled,
+    PackageChanged,
 }
 
 public enum ExpenseStatus
@@ -121,4 +126,39 @@ public enum ExpenseStatus
     PendingApproval,
     Approved,
     Rejected,
+}
+
+public enum PackageTier
+{
+    Beginner = 0,
+    Inter = 1,
+    Business = 2,
+}
+
+public enum BillingCycle
+{
+    Lifetime = 0,
+    Monthly = 1,
+    BiMonthly = 2,
+    Quarterly = 3,
+    SemiAnnual = 6,
+    Annual = 12,
+}
+
+public enum SubscriptionStatus
+{
+    Trial,
+    Active,
+    PastDue,
+    Expired,
+    Cancelled,
+    LifetimeActive,
+}
+
+public enum SubscriptionInvoiceStatus
+{
+    Unpaid,
+    Paid,
+    Overdue,
+    Void,
 }

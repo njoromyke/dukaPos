@@ -5,8 +5,11 @@ using DukaPoS.Domain.Identity;
 using DukaPoS.Domain.Inventory;
 using DukaPoS.Domain.Payments;
 using DukaPoS.Domain.Sales;
+using DukaPoS.Domain.Notifications;
 using DukaPoS.Domain.Storage;
+using DukaPoS.Domain.Subscriptions;
 using DukaPoS.Domain.Tenancy;
+using JasperFx;
 using Marten;
 using Weasel.Core;
 
@@ -83,12 +86,19 @@ public static class MartenConfig
         var tabs = opts.Schema.For<Tab>();
         tabs.DocumentAlias($"{WellKnownConstants.TablePrefix}tabs");
         tabs.Index(x => x.SaleId);
+        tabs.Index(x => x.BranchId);
 
         // ── Payments ──
         var payments = opts.Schema.For<Payment>();
         payments.DocumentAlias($"{WellKnownConstants.TablePrefix}payments");
         payments.Index(x => x.SaleId);
         payments.Index(x => x.CheckoutRequestId!);
+        opts.Schema.For<MpesaCallbackRoute>().Index(x => x.TenantId);
+        var mpesaCallbackLogs = opts.Schema.For<MpesaCallbackLog>();
+        mpesaCallbackLogs.DocumentAlias($"{WellKnownConstants.TablePrefix}mpesa_callback_logs");
+        mpesaCallbackLogs.Index(x => x.CheckoutRequestId!);
+        mpesaCallbackLogs.Index(x => x.ReceivedAt);
+        mpesaCallbackLogs.Index(x => x.ProcessingStatus);
 
         // ── Fiscal ──
         var fiscalInvoices = opts.Schema.For<FiscalInvoice>();
@@ -101,6 +111,39 @@ public static class MartenConfig
         opts.Schema.For<Expense>().Index(x => x.Date);
         opts.Schema.For<Expense>().Index(x => x.Category);
         opts.Schema.For<Expense>().Index(x => x.Status);
+
+        // ── Subscriptions (stored in default tenant) ──
+        var packages = opts.Schema.For<Package>();
+        packages.DocumentAlias($"{WellKnownConstants.TablePrefix}packages");
+        packages.Index(x => x.Tier);
+
+        var subscriptions = opts.Schema.For<Subscription>();
+        subscriptions.DocumentAlias($"{WellKnownConstants.TablePrefix}subscriptions");
+        subscriptions.Index(x => x.TenantId);
+        subscriptions.Index(x => x.Status);
+
+        var subscriptionPayments = opts.Schema.For<SubscriptionPayment>();
+        subscriptionPayments.DocumentAlias($"{WellKnownConstants.TablePrefix}subscription_payments");
+        subscriptionPayments.Index(x => x.SubscriptionId);
+        subscriptionPayments.Index(x => x.TenantId);
+
+        var subscriptionInvoices = opts.Schema.For<SubscriptionInvoice>();
+        subscriptionInvoices.DocumentAlias($"{WellKnownConstants.TablePrefix}subscription_invoices");
+        subscriptionInvoices.Index(x => x.TenantId);
+        subscriptionInvoices.Index(x => x.SubscriptionId);
+        subscriptionInvoices.Index(x => x.InvoiceNumber);
+        subscriptionInvoices.Index(x => x.Status);
+
+        // ── Audit Archive ──
+        var auditArchives = opts.Schema.For<AuditLogArchive>();
+        auditArchives.DocumentAlias($"{WellKnownConstants.TablePrefix}audit_log_archives");
+        auditArchives.Index(x => x.OriginalCreatedAt);
+        auditArchives.Index(x => x.ArchiveBatchId!);
+
+        // ── Notification Settings ──
+        var notificationSettings = opts.Schema.For<NotificationSettings>();
+        notificationSettings.DocumentAlias($"{WellKnownConstants.TablePrefix}notification_settings");
+        notificationSettings.Index(x => x.TenantId);
 
         // ── Storage (Blobs) ──
         var blobEntries = opts.Schema.For<BlobEntry>();

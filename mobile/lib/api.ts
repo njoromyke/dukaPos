@@ -1,15 +1,34 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { useAuthStore } from '@/stores';
+
+const localApiUrl = 'http://192.168.100.70:5100';
+const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || (__DEV__ ? localApiUrl : 'https://api.dukapos.co.ke');
 
 const api = axios.create({
-  baseURL: __DEV__ ? 'http://192.168.1.100:5000' : 'https://api.dukapos.co.ke',
+  baseURL: apiBaseUrl,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 15000,
+});
+
+// Authentication must not inherit a previous session's bearer token or tenant
+// header. Some gateways reject stale Authorization headers even on public routes.
+const publicApi = axios.create({
+  baseURL: apiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
 
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('token');
-  const tenantId = await SecureStore.getItemAsync('tenantId');
+  const [storedToken, storedTenantId] = await Promise.all([
+    SecureStore.getItemAsync('token'),
+    SecureStore.getItemAsync('tenantId'),
+  ]);
+  const session = useAuthStore.getState();
+  const token = session.token || storedToken;
+  const tenantId = session.tenantId || storedTenantId;
+  if (session.token && session.token !== storedToken) await SecureStore.setItemAsync('token', session.token);
+  if (session.tenantId && session.tenantId !== storedTenantId) await SecureStore.setItemAsync('tenantId', session.tenantId);
   if (token) config.headers.Authorization = `Bearer ${token}`;
   if (tenantId) config.headers['X-Tenant-Id'] = tenantId;
   return config;
@@ -17,10 +36,7 @@ api.interceptors.request.use(async (config) => {
 
 api.interceptors.response.use(
   (res) => res,
-  async (error) => {
-    if (error.response?.status === 401) {
-      await SecureStore.deleteItemAsync('token');
-    }
+  (error) => {
     return Promise.reject(error);
   }
 );
@@ -28,9 +44,15 @@ api.interceptors.response.use(
 // ── Auth ──
 export const authApi = {
   login: (email: string, password: string, tenantSlug: string) =>
-    api.post('/api/auth/login', { email, password, tenantSlug }),
+    publicApi.post('/api/auth/login', {
+      email: email.trim(),
+      password,
+      tenantSlug: tenantSlug.trim().toLowerCase(),
+    }),
   pinLogin: (pin: string) =>
     api.post('/api/auth/pin-login', { pin }),
+  unlockPin: (pin: string) => api.post('/api/auth/unlock-pin', { pin }),
+  unlockPassword: (password: string) => api.post('/api/auth/unlock-password', { password }),
 };
 
 // ── Sales ──
@@ -52,6 +74,8 @@ export const salesApi = {
   parkAsTab: (saleId: string, parkedBy: string, parkedByName: string,
     customerName?: string, customerPhone?: string, notes?: string) =>
     api.post('/api/sales/park-tab', { saleId, parkedBy, parkedByName, customerName, customerPhone, notes }),
+  updateCustomer: (saleId: string, customerName: string) =>
+    api.put(`/api/sales/${saleId}/customer`, { customerName }),
 
   recallTab: (tabId: string, recalledBy: string) =>
     api.post('/api/sales/recall-tab', { tabId, recalledBy }),
@@ -77,18 +101,34 @@ export const paymentsApi = {
 
 // ── Inventory ──
 export const inventoryApi = {
-  getProducts: (branchId: string, params?: { search?: string; categoryId?: string; page?: number }) =>
+  getProducts: (branchId: string, params?: { search?: string; categoryId?: string; page?: number; pageSize?: number }) =>
     api.get('/api/inventory/products', { params: { branchId, pageSize: 50, page: 1, ...params } }),
 
-  getByBarcode: (barcode: string) =>
-    api.get(`/api/inventory/products/barcode/${barcode}`),
+  getByBarcode: (barcode: string, branchId?: string) =>
+    api.get(`/api/inventory/products/barcode/${barcode}`, { params: { branchId } }),
 
   getCategories: () => api.get('/api/inventory/categories'),
   createProduct: (data: any) => api.post('/api/inventory/products', data),
   updateProduct: (data: any) => api.put('/api/inventory/products', data),
   adjustStock: (data: any) => api.post('/api/inventory/stock/adjust', data),
   getStockLevels: (branchId: string) =>
-    api.get('/api/inventory/stock', { params: { branchId } }),
+    api.get('/api/inventory/stock/levels', { params: { branchId } }),
+};
+
+export const blobApi = {
+  upload: (asset: { uri: string; fileName?: string; mimeType?: string }, category: string) => {
+    const form = new FormData();
+    form.append('file', {
+      uri: asset.uri,
+      name: asset.fileName || 'upload.jpg',
+      type: asset.mimeType || 'image/jpeg',
+    } as any);
+    form.append('category', category);
+    return api.post('/api/blobs/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getUrl: (id: string) => `${apiBaseUrl}/api/blobs/${id}`,
 };
 
 // ── Terminal ──
@@ -124,6 +164,11 @@ export const userApi = {
   changePin: (currentPin: string, newPin: string) =>
     api.post('/api/auth/change-pin', { currentPin, newPin }),
   getProfile: () => api.get('/api/auth/profile'),
+};
+
+export const branchesApi = {
+  list: () => api.get('/api/auth/branches'),
+  select: (branchId: string) => api.post(`/api/auth/select-branch/${branchId}`),
 };
 
 export default api;

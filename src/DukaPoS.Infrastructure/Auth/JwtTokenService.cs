@@ -8,7 +8,7 @@ namespace DukaPoS.Infrastructure.Auth;
 
 public interface IJwtTokenService
 {
-    string GenerateToken(Guid userId, string email, string role, string tenantId, Guid branchId);
+    string GenerateToken(Guid userId, string email, string role, string tenantId, Guid branchId, IEnumerable<string>? permissions = null);
     string GenerateRefreshToken();
 }
 
@@ -21,7 +21,7 @@ public class JwtTokenService : IJwtTokenService
         _config = config;
     }
 
-    public string GenerateToken(Guid userId, string email, string role, string tenantId, Guid branchId)
+    public string GenerateToken(Guid userId, string email, string role, string tenantId, Guid branchId, IEnumerable<string>? permissions = null)
     {
         var secret = _config["Jwt:Key"]
                      ?? throw new InvalidOperationException("Jwt:Key is required.");
@@ -30,7 +30,7 @@ public class JwtTokenService : IJwtTokenService
 
         var expiryMinutes = int.Parse(_config["Jwt:ExpiryMinutes"] ?? "480");
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, email),
@@ -39,6 +39,15 @@ public class JwtTokenService : IJwtTokenService
             new Claim("branchId", branchId.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
+        foreach (var permission in permissions ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(permission))
+                claims.Add(new Claim("permission", permission));
+        }
+
+        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+            claims.Add(new Claim("permission", "admin.portal.view"));
 
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"] ?? "DukaPoS",

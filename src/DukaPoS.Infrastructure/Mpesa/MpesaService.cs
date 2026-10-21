@@ -4,38 +4,35 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace DukaPoS.Infrastructure.Mpesa;
 
 public interface IMpesaService
 {
-    Task<StkPushResponse> InitiateStkPushAsync(string phoneNumber, decimal amount, string accountReference);
+    Task<StkPushResponse> InitiateStkPushAsync(MpesaConfig config, string phoneNumber, decimal amount, string accountReference);
 }
 
 public class MpesaService : IMpesaService
 {
     private readonly HttpClient _httpClient;
-    private readonly MpesaConfig _config;
     private readonly ILogger<MpesaService> _logger;
-    private string? _cachedToken;
-    private DateTime _tokenExpiry = DateTime.MinValue;
+    private readonly Dictionary<string, (string Token, DateTime Expiry)> _tokens = new();
+    private readonly SemaphoreSlim _tokenLock = new(1, 1);
 
-    public MpesaService(HttpClient httpClient, IOptions<MpesaConfig> config, ILogger<MpesaService> logger)
+    public MpesaService(HttpClient httpClient, ILogger<MpesaService> logger)
     {
         _httpClient = httpClient;
-        _config = config.Value;
         _logger = logger;
-        _httpClient.BaseAddress = new Uri(_config.BaseUrl);
     }
 
-    public async Task<StkPushResponse> InitiateStkPushAsync(string phoneNumber, decimal amount, string accountReference)
+    public async Task<StkPushResponse> InitiateStkPushAsync(MpesaConfig config, string phoneNumber, decimal amount, string accountReference)
     {
-        var token = await GetAccessTokenAsync();
+        var token = await GetAccessTokenAsync(config);
+        _httpClient.BaseAddress = new Uri(config.BaseUrl);
 
         var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-        var shortCode = _config.ShortCode;
-        var passkey = _config.Passkey;
+        var shortCode = config.ShortCode;
+        var passkey = config.Passkey;
         var password = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{shortCode}{passkey}{timestamp}"));
 
         var formattedPhone = FormatPhoneNumber(phoneNumber);
@@ -50,7 +47,7 @@ public class MpesaService : IMpesaService
             PartyA = formattedPhone,
             PartyB = shortCode,
             PhoneNumber = formattedPhone,
-            CallBackURL = _config.CallbackUrl,
+            CallBackURL = config.CallbackUrl,
             AccountReference = accountReference,
             TransactionDesc = $"Payment for {accountReference}",
         };
@@ -86,29 +83,30 @@ public class MpesaService : IMpesaService
             result.ResponseDescription ?? "Success");
     }
 
-    private async Task<string> GetAccessTokenAsync()
+    private async Task<string> GetAccessTokenAsync(MpesaConfig config)
     {
-        if (_cachedToken != null && DateTime.UtcNow < _tokenExpiry)
+        var key = $"{config.BaseUrl}|{config.ConsumerKey}";
+        await _tokenLock.WaitAsync();
+        try
         {
-            return _cachedToken;
+            if (_tokens.TryGetValue(key, out var cached) && DateTime.UtcNow < cached.Expiry) return cached.Token;
+
+            _httpClient.BaseAddress = new Uri(config.BaseUrl);
+            var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{config.ConsumerKey}:{config.ConsumerSecret}"));
+
+            var request = new HttpRequestMessage(HttpMethod.Get, "oauth/v1/generate?grant_type=client_credentials");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var tokenResponse = await response.Content.ReadFromJsonAsync<MpesaTokenResponse>()
+                ?? throw new InvalidOperationException("Failed to get M-Pesa access token");
+
+            _tokens[key] = (tokenResponse.AccessToken, DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn - 60));
+            return tokenResponse.AccessToken;
         }
-
-        var credentials = Convert.ToBase64String(
-            Encoding.UTF8.GetBytes($"{_config.ConsumerKey}:{_config.ConsumerSecret}"));
-
-        var request = new HttpRequestMessage(HttpMethod.Get, "oauth/v1/generate?grant_type=client_credentials");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-
-        var response = await _httpClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-
-        var tokenResponse = await response.Content.ReadFromJsonAsync<MpesaTokenResponse>()
-            ?? throw new InvalidOperationException("Failed to get M-Pesa access token");
-
-        _cachedToken = tokenResponse.AccessToken;
-        _tokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn - 60);
-
-        return _cachedToken;
+        finally { _tokenLock.Release(); }
     }
 
     private static string FormatPhoneNumber(string phone)
