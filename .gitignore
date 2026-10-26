@@ -147,3 +147,4 @@ rider/
 /android/app/build/
 /ios/Pods/
 
+.codex/
