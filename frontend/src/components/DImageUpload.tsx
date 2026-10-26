@@ -52,13 +52,14 @@ export default function DImageUpload({
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
       sx={{
-        border: "2px dashed",
+        border: "1px dashed",
         borderColor: "divider",
         borderRadius: 2,
-        p: 3,
+        p: { xs: 2.25, sm: 3 },
+        bgcolor: '#FBFCFD',
         textAlign: "center",
         cursor: "pointer",
-        "&:hover": { borderColor: "primary.main", bgcolor: "action.hover" },
+        "&:hover": { borderColor: "primary.main", bgcolor: "#F1FAF6" },
       }}
     >
       <CloudUploadIcon sx={{ fontSize: 36, color: "text.disabled", mb: 0.5 }} />

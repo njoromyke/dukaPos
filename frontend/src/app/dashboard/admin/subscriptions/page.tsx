@@ -126,7 +126,7 @@ export default function AdminSubscriptionsPage() {
       <DPageHeader title="Subscriptions & invoices" subtitle="Manage tenant plans, billing periods, due dates, and payment status" breadcrumbs={[{ label: 'Admin', href: '/dashboard/admin' }, { label: 'Subscriptions & invoices' }]} />
 
       <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>Active subscriptions ({currentSubscriptions.length})</Typography>
-      <DSearchFilter search={search} onSearchChange={setSearch} onRefresh={() => void load()} searchPlaceholder="Search tenant or package" />
+      <DSearchFilter search={search} onSearchChange={setSearch} onRefresh={() => void load()} refreshLoading={loading} searchPlaceholder="Search tenant or package" />
       <DTable columns={subscriptionColumns} rows={visibleSubscriptions} rowKey={(item) => item.id} loading={loading} pageSize={10} pageSizeOptions={[10, 20, 50]} emptyMessage="No subscriptions found" />
 
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} sx={{ mb: 1.5 }} spacing={1}>

@@ -173,7 +173,7 @@ export default function AuditLogsPage() {
       <Box display="flex" gap={2} flexWrap="wrap" alignItems="center" mb={2}>
         <DDateRange from={dateFrom} to={dateTo} onFromChange={applyDateFrom} onToChange={applyDateTo} onRangeChange={applyDatePreset} />
       </Box>
-      <DSearchFilter filters={filters} onRefresh={tab === 0 ? load : loadArchived} />
+      <DSearchFilter filters={filters} onRefresh={tab === 0 ? load : loadArchived} refreshLoading={tab === 0 ? loading : archiveLoading} />
       <DTable
         columns={columns}
         rows={tab === 0 ? logs : archivedLogs}

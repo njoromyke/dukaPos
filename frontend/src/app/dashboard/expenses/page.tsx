@@ -208,7 +208,7 @@ export default function ExpensesPage() {
         <DDateRange from={dateFrom} to={dateTo} onFromChange={(v) => { setDateFrom(v); setPage(0); }} onToChange={(v) => { setDateTo(v); setPage(0); }} />
       </Box>}
 
-      {expenseFeature && <DSearchFilter filters={filters} onRefresh={() => { loadExpenses(); loadSummary(); }} />}
+      {expenseFeature && <DSearchFilter filters={filters} onRefresh={() => { loadExpenses(); loadSummary(); }} refreshLoading={loading} />}
 
       {expenseFeature && <DTable
         columns={columns} rows={expenses} rowKey={(e) => e.id}

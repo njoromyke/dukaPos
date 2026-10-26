@@ -51,7 +51,7 @@ export default function DPlanUpgradeHint({ compact = false }: { compact?: boolea
   if (!nextPackage) return null;
 
   return (
-    <Box sx={{ p: compact ? 1.5 : 2, borderRadius: 2, bgcolor: 'primary.50', border: '1px solid', borderColor: 'primary.100' }}>
+    <Box sx={{ p: compact ? 1.5 : 2, borderRadius: 2.5, bgcolor: '#F1FAF6', border: '1px solid #CDEBDD' }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
         <AutoAwesomeOutlinedIcon color="primary" fontSize="small" sx={{ mt: 0.25 }} />
         <Box sx={{ minWidth: 0, flex: 1 }}>

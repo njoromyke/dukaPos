@@ -243,7 +243,7 @@ export default function NotificationSettingsPage() {
       </Box>
 
       {tab === 1 && <>
-        <DSearchFilter search={deliverySearch} onSearchChange={(value) => { setDeliverySearch(value); setDeliveryPage(0); }} searchPlaceholder="Search notifications..." onRefresh={() => void loadHistory()} />
+        <DSearchFilter search={deliverySearch} onSearchChange={(value) => { setDeliverySearch(value); setDeliveryPage(0); }} searchPlaceholder="Search notifications..." onRefresh={() => void loadHistory()} refreshLoading={historyLoading} />
         <DTable
           columns={deliveryColumns}
           rows={deliveries}

@@ -23,7 +23,7 @@ export default function DPageHeader({ title, subtitle, breadcrumbs, action }: Pr
   return (
     <Box mb={3}>
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <Breadcrumbs sx={{ mb: 1, fontSize: "0.85rem" }}>
+        <Breadcrumbs sx={{ mb: 1.25, fontSize: "0.78rem", '& .MuiBreadcrumbs-separator': { color: '#B2BBC7' } }}>
           {breadcrumbs.map((crumb, i) =>
             crumb.href && i < breadcrumbs.length - 1 ? (
               <Link
@@ -32,28 +32,28 @@ export default function DPageHeader({ title, subtitle, breadcrumbs, action }: Pr
                 href={crumb.href}
                 underline="hover"
                 color="text.secondary"
-                sx={{ fontSize: "inherit" }}
+                sx={{ fontSize: "inherit", color: '#758397' }}
               >
                 {crumb.label}
               </Link>
             ) : (
-              <Typography key={i} color="text.primary" sx={{ fontSize: "inherit", fontWeight: 500 }}>
+              <Typography key={i} color="text.primary" sx={{ fontSize: "inherit", fontWeight: 600 }}>
                 {crumb.label}
               </Typography>
             )
           )}
         </Breadcrumbs>
       )}
-      <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Box>
-          <Typography variant="h5">{title}</Typography>
+      <Box display="flex" alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" gap={2} flexWrap="wrap">
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h5" sx={{ fontSize: { xs: '1.4rem', sm: '1.65rem' }, fontWeight: 750, color: '#142033', letterSpacing: '-0.035em' }}>{title}</Typography>
           {subtitle && (
-            <Typography variant="body2" color="text.secondary" mt={0.5}>
+            <Typography variant="body2" color="text.secondary" mt={0.5} sx={{ fontSize: '0.86rem' }}>
               {subtitle}
             </Typography>
           )}
         </Box>
-        {action && <Box display="flex" gap={1}>{action}</Box>}
+        {action && <Box display="flex" gap={1} flexWrap="wrap">{action}</Box>}
       </Box>
     </Box>
   );

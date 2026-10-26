@@ -126,6 +126,7 @@ export default function StockPage() {
         onSearchChange={(value) => { setSearch(value); setPage(0); }}
         searchPlaceholder="Search products or SKU..."
         onRefresh={() => void load()}
+        refreshLoading={loading}
       />
       <DTable
         columns={columns}

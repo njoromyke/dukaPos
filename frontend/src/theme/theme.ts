@@ -1,5 +1,18 @@
 import { createTheme, alpha } from '@mui/material/styles';
 
+const paletteTokens = {
+  canvas: '#F8FAFC',
+  canvasSubtle: '#F1F5F9',
+  surface: '#FFFFFF',
+  ink: '#131B2E',
+  muted: '#64748B',
+  border: '#E2E8F0',
+  navy: '#0F172A',
+  green: '#059669',
+  greenDark: '#047857',
+  blue: '#0284C7',
+};
+
 const shared = {
   typography: {
     fontFamily: 'var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -22,6 +35,8 @@ const shared = {
           paddingInline: 20,
           boxShadow: 'none',
           fontWeight: 600,
+          minHeight: 40,
+          '&:focus-visible': { outline: `3px solid ${alpha(paletteTokens.blue, 0.35)}`, outlineOffset: 2 },
           '&:hover': { boxShadow: 'none' },
         },
         sizeLarge: { paddingBlock: 12, fontSize: '0.875rem', borderRadius: 10, minHeight: 44 },
@@ -44,6 +59,7 @@ const shared = {
         rounded: {
           borderRadius: 16,
           boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05)',
+          border: `1px solid ${paletteTokens.border}`,
         },
       },
     },
@@ -67,11 +83,14 @@ const shared = {
       styleOverrides: {
         root: {
           borderRadius: 8,
+          backgroundColor: paletteTokens.surface,
+          minHeight: 40,
           '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#0284c7',
+            borderColor: paletteTokens.blue,
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#0284c7',
+            borderColor: paletteTokens.blue,
+            borderWidth: 2,
           },
         },
       },
@@ -90,7 +109,10 @@ const shared = {
             textTransform: 'uppercase' as const,
             letterSpacing: '0.05em',
             color: '#64748B',
-            borderBottom: '2px solid #E2E8F0',
+            borderBottom: `1px solid ${paletteTokens.border}`,
+            backgroundColor: paletteTokens.canvasSubtle,
+            paddingTop: 12,
+            paddingBottom: 12,
           },
         },
       },
@@ -99,7 +121,26 @@ const shared = {
       styleOverrides: {
         root: {
           '&:last-child td': { borderBottom: 0 },
-          '&:hover': { backgroundColor: 'rgba(248, 250, 252, 0.7)' },
+          '&:hover': { backgroundColor: `${paletteTokens.canvas} !important` },
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: { borderColor: paletteTokens.border, padding: '12px 16px' },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          minHeight: 40,
+          borderRadius: 6,
+          marginInline: 4,
+          '&.Mui-selected': {
+            backgroundColor: alpha(paletteTokens.green, 0.1),
+            color: paletteTokens.greenDark,
+            '&:hover': { backgroundColor: alpha(paletteTokens.green, 0.16) },
+          },
         },
       },
     },
@@ -128,15 +169,15 @@ export const lightTheme = createTheme({
   ...shared,
   palette: {
     mode: 'light',
-    primary: { main: '#059669', light: '#D1FAE5', dark: '#047857', contrastText: '#fff' },
-    secondary: { main: '#0284C7', light: '#E0F2FE', dark: '#0369A1', contrastText: '#fff' },
-    success: { main: '#059669', light: '#D1FAE5', dark: '#047857' },
+    primary: { main: paletteTokens.green, light: '#D1FAE5', dark: paletteTokens.greenDark, contrastText: '#fff' },
+    secondary: { main: paletteTokens.blue, light: '#E0F2FE', dark: '#0369A1', contrastText: '#fff' },
+    success: { main: paletteTokens.green, light: '#D1FAE5', dark: paletteTokens.greenDark },
     error: { main: '#EF4444', light: '#FEE2E2', dark: '#DC2626' },
     warning: { main: '#F59E0B', light: '#FEF3C7', dark: '#D97706' },
     info: { main: '#0284C7', light: '#E0F2FE', dark: '#0369A1' },
-    background: { default: '#F8FAFC', paper: '#FFFFFF' },
-    text: { primary: '#0F172A', secondary: '#64748B' },
-    divider: '#E2E8F0',
+    background: { default: paletteTokens.canvas, paper: paletteTokens.surface },
+    text: { primary: paletteTokens.ink, secondary: paletteTokens.muted },
+    divider: paletteTokens.border,
   },
 });
 

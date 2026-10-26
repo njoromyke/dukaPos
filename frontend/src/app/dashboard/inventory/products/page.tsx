@@ -10,6 +10,8 @@ import MenuItem from "@mui/material/MenuItem";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/EditOutlined";
 import IconButton from "@mui/material/IconButton";
+import Paper from "@mui/material/Paper";
+import Divider from "@mui/material/Divider";
 import { useAuthStore } from "@/stores/auth-store";
 import { inventoryApi, blobApi } from "@/lib/api";
 import { useSnackbar } from "notistack";
@@ -248,6 +250,7 @@ export default function ProductsPage() {
     <Box sx={{ width: "100%", minWidth: 0, maxWidth: "100%", overflowX: "hidden" }}>
       <DPageHeader
         title="Products"
+        subtitle="Manage your catalog, pricing and stock details."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Inventory", href: "/dashboard/inventory/products" },
@@ -260,15 +263,28 @@ export default function ProductsPage() {
         ) : undefined}
       />
 
-      <InventoryBranchSelector value={branchId} onChange={(value) => { setBranchId(value); setPage(0); }} />
-
-      <DSearchFilter
-        search={search}
-        onSearchChange={(v) => { setSearch(v); setPage(0); }}
-        searchPlaceholder="Search products..."
-        filters={filters}
-        onRefresh={loadProducts}
-      />
+      <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 2, border: '1px solid #E6EAF0', borderRadius: 3, boxShadow: '0 2px 8px rgba(15,23,42,.035)' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
+          <Box>
+            <Typography sx={{ color: '#233247', fontSize: '0.92rem', fontWeight: 700 }}>Catalog overview</Typography>
+            <Typography sx={{ color: '#8390A1', fontSize: '0.78rem', mt: .25 }}>Search and filter the products available at this branch.</Typography>
+          </Box>
+          <Chip label={`${total.toLocaleString()} ${total === 1 ? 'product' : 'products'}`} size="small" sx={{ bgcolor: '#E9F7F1', color: '#087A58', fontWeight: 700 }} />
+        </Box>
+        <Divider sx={{ mb: 1.5, borderColor: '#EEF1F4' }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <InventoryBranchSelector value={branchId} onChange={(value) => { setBranchId(value); setPage(0); }} />
+          <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 280 } }}>
+            <DSearchFilter
+              search={search}
+              onSearchChange={(v) => { setSearch(v); setPage(0); }}
+              searchPlaceholder="Search by product name or SKU"
+              filters={filters}
+              filterAction
+            />
+          </Box>
+        </Box>
+      </Paper>
 
       <DTable
         columns={columns}

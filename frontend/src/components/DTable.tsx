@@ -140,7 +140,7 @@ export default function DTable<T extends Record<string, any>>({
   const showPagination = count > 0;
 
   return (
-    <Paper sx={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", overflow: "hidden", display: "flex", flexDirection: "column", height: "calc(100vh - 320px)", minHeight: 360 }}>
+    <Paper sx={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", overflow: "hidden", display: "flex", flexDirection: "column", height: "calc(100vh - 300px)", minHeight: 360, border: '1px solid #E2E8F0', borderRadius: 3, boxShadow: '0 2px 8px rgba(15,23,42,0.035)' }}>
       <TableContainer sx={{ width: "100%", minWidth: 0, maxWidth: "100%", flex: 1, minHeight: 0, overflowX: "auto", overflowY: "auto", overscrollBehavior: "contain" }}>
         <Table size="medium" stickyHeader={stickyHeader} sx={{ minWidth: minTableWidth, tableLayout: "fixed", width: `max(100%, ${minTableWidth}px)` }}>
           <TableHead>
@@ -154,11 +154,11 @@ export default function DTable<T extends Record<string, any>>({
                     minWidth: 88,
                     maxWidth: columnWidths[col.field],
                     position: "relative",
-                    bgcolor: "#F3F5F7",
+                    bgcolor: "#F8FAFC",
                     color: "#718096",
                     fontWeight: 600,
                     whiteSpace: "nowrap",
-                    borderBottom: "1px solid #DCE1E6",
+                    borderBottom: "1px solid #E2E8F0",
                     cursor: "grab",
                     userSelect: "none",
                   }}
@@ -219,8 +219,8 @@ export default function DTable<T extends Record<string, any>>({
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                     sx={{
                       ...(onRowClick ? { cursor: "pointer" } : {}),
-                      "&:nth-of-type(even)": { bgcolor: "rgba(145, 158, 171, 0.06)" },
-                      "& td": { borderBottom: "1px dashed #E1E5E9", py: 1.8 },
+                      "&:nth-of-type(even)": { bgcolor: "#FBFCFD" },
+                      "& td": { borderBottom: "1px solid #EEF1F4", py: 1.45 },
                     }}
                   >
                     {orderedColumns.map((col) => (

@@ -11,6 +11,7 @@ import Alert from '@mui/material/Alert';
 import IconButton from '@mui/material/IconButton';
 import LockIcon from '@mui/icons-material/Lock';
 import BackspaceIcon from '@mui/icons-material/Backspace';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSaleOutlined';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePosStore } from '@/stores/pos-store';
 import { authApi } from '@/lib/api';
@@ -141,22 +142,31 @@ export default function LockScreen({ idleTimeoutMinutes = 5 }: Props) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'rgba(15, 23, 42, 0.85)',
-        backdropFilter: 'blur(24px)',
+        bgcolor: 'rgba(11, 22, 39, 0.92)',
+        backgroundImage: 'radial-gradient(ellipse at 50% 18%, rgba(5,150,105,.22), transparent 42%), linear-gradient(135deg, rgba(15,23,42,.96), rgba(9,25,38,.96))',
+        backdropFilter: 'blur(18px)',
+        px: 2,
       }}
     >
       <Paper
         elevation={0}
         sx={{
-          p: 4,
+          p: { xs: 2.75, sm: 3.5 },
           width: '100%',
-          maxWidth: 360,
+          maxWidth: 392,
           textAlign: 'center',
-          borderRadius: 4,
+          borderRadius: 3,
           bgcolor: '#fff',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
+          border: '1px solid rgba(226,232,240,.9)',
+          boxShadow: '0 30px 80px -28px rgba(0,0,0,.62)',
         }}
       >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2.75 }}>
+          <Box sx={{ width: 30, height: 30, borderRadius: 1.5, bgcolor: '#059669', display: 'grid', placeItems: 'center' }}>
+            <PointOfSaleIcon sx={{ color: '#fff', fontSize: 18 }} />
+          </Box>
+          <Typography sx={{ color: '#132033', fontWeight: 800, letterSpacing: '-.035em', fontSize: '1rem' }}>Duka<span style={{ color: '#059669' }}>POS</span></Typography>
+        </Box>
         <Avatar
           sx={{
             width: 64,
@@ -165,17 +175,21 @@ export default function LockScreen({ idleTimeoutMinutes = 5 }: Props) {
             fontWeight: 700,
             mx: 'auto',
             mb: 2,
-            background: 'linear-gradient(135deg, #1565C0, #0D47A1)',
+            background: 'linear-gradient(135deg, #059669, #047857)',
+            boxShadow: '0 0 0 5px #ECFDF5',
           }}
         >
           {initials}
         </Avatar>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+        <Typography variant="h6" sx={{ fontWeight: 750, mb: 0.5, color: '#142033', letterSpacing: '-.02em' }}>
           {auth.user?.fullName}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Session locked
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+          Enter your credentials to resume this session
         </Typography>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: .75, mb: 2.5, px: 1.1, py: .55, borderRadius: 99, bgcolor: '#F1F5F9', color: '#607084', fontSize: '.72rem', fontWeight: 650 }}>
+          <LockIcon sx={{ fontSize: 14, color: '#059669' }} /> Session locked
+        </Box>
 
         {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
 
@@ -190,8 +204,8 @@ export default function LockScreen({ idleTimeoutMinutes = 5 }: Props) {
                     height: 14,
                     borderRadius: '50%',
                     border: '2px solid',
-                    borderColor: i < pin.length ? '#1565C0' : '#CBD5E1',
-                    bgcolor: i < pin.length ? '#1565C0' : 'transparent',
+                    borderColor: i < pin.length ? '#059669' : '#CBD5E1',
+                    bgcolor: i < pin.length ? '#059669' : 'transparent',
                     transition: 'all 0.15s',
                   }}
                 />
@@ -219,16 +233,17 @@ export default function LockScreen({ idleTimeoutMinutes = 5 }: Props) {
                     onClick={() => handlePinDigit(key)}
                     disabled={loading}
                     sx={{
-                      width: 56,
-                      height: 56,
+                      width: 58,
+                      height: 58,
                       minWidth: 0,
                       mx: 'auto',
                       borderRadius: '50%',
                       fontSize: '1.25rem',
                       fontWeight: 600,
                       borderColor: '#E2E8F0',
-                      color: '#334155',
-                      '&:hover': { bgcolor: '#F1F5F9', borderColor: '#CBD5E1' },
+                      color: '#243247',
+                      bgcolor: '#FBFCFD',
+                      '&:hover': { bgcolor: '#E9F7F1', borderColor: '#9AD8C0', color: '#047857' },
                     }}
                   >
                     {key}
@@ -266,8 +281,8 @@ export default function LockScreen({ idleTimeoutMinutes = 5 }: Props) {
               sx={{
                 py: 1.25,
                 mb: 1.5,
-                background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
-                '&:hover': { background: 'linear-gradient(135deg, #1976D2 0%, #1565C0 100%)' },
+                bgcolor: '#059669',
+                '&:hover': { bgcolor: '#047857' },
               }}
             >
               {loading ? 'Verifying...' : 'Unlock'}

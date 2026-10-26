@@ -27,22 +27,23 @@ export default function DStatCard({ label, value, icon, color, trend }: Props) {
         position: "relative",
         overflow: "hidden",
         border: "1px solid",
-        borderColor: "divider",
-        boxShadow: "0 1px 3px 0 rgba(15, 23, 42, 0.04)",
+        borderColor: "#E6EAF0",
+        borderRadius: 3,
+        boxShadow: "0 2px 8px rgba(15, 23, 42, 0.035)",
         transition: "box-shadow 0.2s ease, transform 0.2s ease",
         "&:hover": {
-          boxShadow: "0 4px 12px 0 rgba(15, 23, 42, 0.08)",
-          transform: "translateY(-1px)",
+          boxShadow: "0 8px 20px rgba(15, 23, 42, 0.07)",
+          transform: "translateY(-2px)",
         },
       }}
     >
-      <Box sx={{ p: 2.5, display: "flex", alignItems: "flex-start", gap: 2 }}>
+      <Box sx={{ p: { xs: 2, sm: 2.25 }, display: "flex", alignItems: "flex-start", gap: 1.75 }}>
         {icon && (
           <Box
             sx={{
-              width: 44,
-              height: 44,
-              borderRadius: 2.5,
+              width: 42,
+              height: 42,
+              borderRadius: 2,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -57,17 +58,16 @@ export default function DStatCard({ label, value, icon, color, trend }: Props) {
         <Box sx={{ minWidth: 0 }}>
           <Typography
             sx={{
-              fontSize: "0.75rem",
-              fontWeight: 600,
+              fontSize: "0.7rem",
+              fontWeight: 650,
               color: "text.secondary",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
+              letterSpacing: "0.015em",
               mb: 0.5,
             }}
           >
             {label}
           </Typography>
-          <Typography sx={{ fontSize: "1.5rem", fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.02em" }}>
+          <Typography sx={{ fontSize: { xs: "1.28rem", sm: "1.42rem" }, fontWeight: 750, lineHeight: 1.2, letterSpacing: "-0.035em", fontVariantNumeric: 'tabular-nums' }}>
             {value}
           </Typography>
           {trend && (
@@ -86,13 +86,6 @@ export default function DStatCard({ label, value, icon, color, trend }: Props) {
         </Box>
       </Box>
 
-      {/* Bottom accent bar */}
-      <Box
-        sx={{
-          height: 3,
-          background: `linear-gradient(90deg, ${c}, ${alpha(c, 0.3)})`,
-        }}
-      />
     </Paper>
   );
 }

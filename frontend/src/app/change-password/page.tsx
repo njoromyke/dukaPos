@@ -51,7 +51,7 @@ export default function ChangePasswordPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%)',
+      background: 'radial-gradient(ellipse at 50% 15%, rgba(5,150,105,.2), transparent 42%), linear-gradient(135deg, #0B1627 0%, #1E293B 55%, #0F172A 100%)',
       p: 2,
     }}>
       <Paper
@@ -60,17 +60,16 @@ export default function ChangePasswordPage() {
           p: { xs: 4, sm: 5 },
           width: '100%',
           maxWidth: 420,
-          bgcolor: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: 4,
-          border: '1px solid rgba(255,255,255,0.2)',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+          bgcolor: '#fff',
+          borderRadius: 3,
+          border: '1px solid #E2E8F0',
+          boxShadow: '0 30px 80px -28px rgba(0,0,0,.55)',
         }}
       >
         <Box textAlign="center" mb={4}>
           <Box sx={{
             width: 56, height: 56, borderRadius: 3, mx: 'auto', mb: 2,
-            background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <LockResetIcon sx={{ color: '#fff', fontSize: 28 }} />
@@ -96,8 +95,8 @@ export default function ChangePasswordPage() {
           <Button type="submit" variant="contained" size="large" disabled={loading}
             sx={{
               mt: 1, py: 1.5,
-              background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-              '&:hover': { background: 'linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%)' },
+              bgcolor: '#059669',
+              '&:hover': { bgcolor: '#047857' },
             }}>
             {loading ? 'Changing...' : 'Change Password'}
           </Button>

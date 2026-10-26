@@ -68,7 +68,7 @@ export default function LoginPage() {
         ? `Access was denied by ${failure.response.config?.baseURL || 'the configured API'} (HTTP 403). Confirm this is the intended DukaPoS API.`
         : failure.response?.status
         ? `The server at ${failure.response.config?.baseURL || 'the configured API'} returned HTTP ${failure.response.status}. Verify the API address and try again.`
-        : `Cannot reach the DukaPoS server at ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5100'}. ${failure.message || 'Check your network connection and try again.'}`));
+        : `Cannot reach the DukaPoS server. ${failure.message || 'Check your network connection and try again.'}`));
     } finally {
       setLoading(false);
     }

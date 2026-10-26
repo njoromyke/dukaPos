@@ -1,0 +1,60 @@
+services:
+  # ── .NET API ──
+  - type: web
+    name: dukapos-api
+    runtime: docker
+    repo: https://github.com/njoromyke/dukapos
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      # Set this manually after creating the Postgres database.
+      # Format: Host=<host>;Port=5432;Database=dukapos;Username=<user>;Password=<pass>;Ssl Mode=Require;Trust Server Certificate=true
+      - key: ConnectionStrings__Postgres
+        sync: false
+      - key: RedisConfiguration__Host
+        sync: false
+      - key: RedisConfiguration__Port
+        value: "6379"
+      - key: RedisConfiguration__password
+        sync: false
+      - key: RedisConfiguration__Ssl
+        value: "true"
+      - key: Jwt__Key
+        generateValue: true
+      - key: Jwt__Issuer
+        value: DukaPoS
+      - key: Jwt__Audience
+        value: DukaPoS
+      - key: Cors__AllowedOrigins__0
+        value: https://dukapos.co.ke
+      - key: Cors__AllowedOrigins__1
+        value: https://www.dukapos.co.ke
+      - key: Cors__AllowedOrigins__2
+        value: https://portal.dukapos.co.ke
+
+  # ── Next.js Portal ──
+  - type: web
+    name: dukapos-portal
+    runtime: node
+    repo: https://github.com/njoromyke/dukapos
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: starter
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://api.dukapos.co.ke
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: dukapos-db
+    plan: starter
+    databaseName: dukapos
+    postgresMajorVersion: "16"

@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
+import CircularProgress from "@mui/material/CircularProgress";
 import MenuItem from "@mui/material/MenuItem";
+import FilterAltIcon from "@mui/icons-material/FilterAltOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
@@ -28,6 +31,8 @@ interface Props {
   searchPlaceholder?: string;
   filters?: FilterConfig[];
   onRefresh?: () => void;
+  refreshLoading?: boolean;
+  filterAction?: boolean;
   debounceMs?: number;
   extra?: ReactNode;
 }
@@ -38,30 +43,31 @@ export default function DSearchFilter({
   searchPlaceholder = "Search...",
   filters,
   onRefresh,
+  refreshLoading = false,
+  filterAction = false,
   debounceMs = 300,
   extra,
 }: Props) {
   const [local, setLocal] = useState(controlledSearch ?? "");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const onSearchChangeRef = useRef(onSearchChange);
+
+  useEffect(() => {
+    onSearchChangeRef.current = onSearchChange;
+  }, [onSearchChange]);
 
   useEffect(() => {
     if (controlledSearch !== undefined) setLocal(controlledSearch);
   }, [controlledSearch]);
 
-  const emit = useCallback(
-    (val: string) => {
-      onSearchChange?.(val);
-    },
-    [onSearchChange]
-  );
-
   useEffect(() => {
-    if (!onSearchChange) return;
-    const t = setTimeout(() => emit(local), debounceMs);
+    if (!onSearchChangeRef.current || local === (controlledSearch ?? "")) return;
+    const t = setTimeout(() => onSearchChangeRef.current?.(local), debounceMs);
     return () => clearTimeout(t);
-  }, [local, debounceMs, emit, onSearchChange]);
+  }, [local, controlledSearch, debounceMs]);
 
   return (
-    <Box display="flex" gap={2} flexWrap="wrap" alignItems="center" justifyContent="flex-end" mb={2}>
+    <Box display="flex" gap={1.25} flexWrap="wrap" alignItems="center" justifyContent="flex-start" mb={2}>
       {onSearchChange && (
         <TextField
           placeholder={searchPlaceholder}
@@ -78,8 +84,8 @@ export default function DSearchFilter({
           }}
           size="small"
           sx={{
-            width: { xs: "100%", sm: 320, md: 420 },
-            "& .MuiOutlinedInput-root": { borderRadius: 3, minHeight: 48, fontSize: 16 },
+            width: { xs: "100%", sm: 280, md: 340 },
+            "& .MuiOutlinedInput-root": { borderRadius: 2, minHeight: 42, fontSize: 14 },
           }}
         />
       )}
@@ -91,9 +97,16 @@ export default function DSearchFilter({
           label={f.label}
           value={f.value}
           onChange={(e) => f.onChange(e.target.value)}
+          slotProps={{
+            select: {
+              open: filterAction ? filterOpen : undefined,
+              onOpen: () => { if (filterAction) setFilterOpen(true); },
+              onClose: () => setFilterOpen(false),
+            },
+          }}
           sx={{
-            minWidth: f.minWidth ?? 220,
-            "& .MuiOutlinedInput-root": { borderRadius: 3, minHeight: 48, fontSize: 16 },
+            minWidth: f.minWidth ?? 180,
+            "& .MuiOutlinedInput-root": { borderRadius: 2, minHeight: 42, fontSize: 14 },
           }}
         >
           {f.options.map((opt) => (
@@ -104,14 +117,41 @@ export default function DSearchFilter({
         </TextField>
       ))}
       {extra}
-      {onRefresh && (
-        <IconButton
-          onClick={onRefresh}
-          title="Refresh"
-          sx={{ width: 52, height: 52, bgcolor: "action.hover", "&:hover": { bgcolor: "action.selected" } }}
-        >
-          <RefreshIcon />
-        </IconButton>
+      {filterAction && filters?.length ? (
+        <Tooltip title="Filter products">
+          <IconButton
+            onClick={() => setFilterOpen(true)}
+            aria-label="Open product filters"
+            sx={{
+              width: 42, height: 42, bgcolor: '#087A58', color: '#fff', borderRadius: 2,
+              border: '1px solid #087A58', transition: 'all .15s ease',
+              '&:hover': { bgcolor: '#066648', borderColor: '#066648', transform: 'translateY(-1px)' },
+              '&:active': { transform: 'scale(.97)' },
+            }}
+          >
+            <FilterAltIcon />
+          </IconButton>
+        </Tooltip>
+      ) : onRefresh && (
+        <Tooltip title={refreshLoading ? 'Reloading…' : 'Reload results'}>
+          <span>
+            <IconButton
+              onClick={onRefresh}
+              aria-label="Reload results"
+              disabled={refreshLoading}
+              sx={{
+                width: 42, height: 42, bgcolor: "#fff", color: '#5A697D', borderRadius: 2,
+                border: '1px solid #E2E8F0', transition: 'all .15s ease',
+                "&:hover": { bgcolor: "#E9F7F1", color: '#047857', borderColor: '#A7DCC4' },
+                "&:active": { transform: 'scale(.97)' },
+                '& .MuiSvgIcon-root': { transition: 'transform .25s ease' },
+                '&:hover .MuiSvgIcon-root': { transform: 'rotate(35deg)' },
+              }}
+            >
+              {refreshLoading ? <CircularProgress size={18} color="inherit" /> : <RefreshIcon />}
+            </IconButton>
+          </span>
+        </Tooltip>
       )}
     </Box>
   );

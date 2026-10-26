@@ -57,7 +57,7 @@ export default function InventoryBranchSelector({ value, onChange }: Props) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={loading || branches.length === 0}
-        sx={{ minWidth: { xs: '100%', sm: 320 }, mb: 2 }}
+        sx={{ minWidth: { xs: '100%', sm: 260 }, mb: 0 }}
       >
         {branches.length === 0 && <MenuItem value="">No active branches</MenuItem>}
         {branches.map((branch) => <MenuItem key={branch.id} value={branch.id}>{branch.label}</MenuItem>)}
@@ -65,5 +65,5 @@ export default function InventoryBranchSelector({ value, onChange }: Props) {
     );
   }
 
-  return <Chip label={user?.branchName || 'Assigned branch'} size="small" variant="outlined" sx={{ mb: 2 }} />;
+  return <Chip label={user?.branchName || 'Assigned branch'} size="small" variant="outlined" sx={{ mb: 0, height: 34, bgcolor: '#F8FAFC', color: '#536174', borderColor: '#E2E8F0', fontWeight: 600 }} />;
 }
